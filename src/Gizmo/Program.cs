@@ -171,6 +171,12 @@ namespace Brandmuscle.LocationData.Graph.GremlinConsole
             }
         }
 
+        ///<summary>
+        ///<param name="command"> Just the command the user passed in </param>
+        ///<param name="spinner"> Used to display a progress icon on the left </param>
+        ///<param name="ct">Cancellation token to kill off threads if necessary </param>
+        ///Processes user input for anything that's not a direct Gremlin query
+        ///</summary>
         private static async Task<string> DoCommand(string command, Spinner spinner = null, CancellationToken ct = default(CancellationToken))
         {
             var args = command.Split(" ");
@@ -201,6 +207,11 @@ namespace Brandmuscle.LocationData.Graph.GremlinConsole
             }
         }
 
+        /// <summary>
+        /// <param name="spinner"> Displays a little animation on the far left of the output</param>
+        /// <param name="args"> filename startOffset endOffset numberOfThreads </param>
+        /// <param name="ct"> A CancellationToken to inform all threads to kill themselves if necessary </param>
+        /// </summary> 
         private static async Task<string> ProcessFile(Spinner spinner, string[] args, CancellationToken ct = default(CancellationToken))
         {
             long globalCount = 0;
