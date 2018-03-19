@@ -9,16 +9,8 @@ using System.Text;
 using System.Text.RegularExpressions;
 using System.Threading;
 using System.Threading.Tasks;
-using Gremlin.Net;
-using Gremlin.Net.Driver;
 using Kurukuru;
-using Microsoft.Azure.Documents;
-using Microsoft.Azure.Documents.Client;
-using Microsoft.Azure.Documents.Linq;
-using Microsoft.Azure.Graphs;
 using Microsoft.Extensions.Configuration;
-using Microsoft.Extensions.Configuration.Binder;
-using Newtonsoft.Json;
 
 namespace Brandmuscle.LocationData.Graph.GremlinConsole
 {
