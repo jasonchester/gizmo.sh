@@ -1,10 +1,12 @@
 ﻿using System;
+using System.Collections;
 using System.Collections.Async;
 using System.Collections.Generic;
 using System.Diagnostics;
 using System.IO;
 using System.Linq;
 using System.Text;
+using System.Text.RegularExpressions;
 using System.Threading;
 using System.Threading.Tasks;
 using Gremlin.Net;
@@ -201,10 +203,53 @@ namespace Brandmuscle.LocationData.Graph.GremlinConsole
                 case ":l":
                 case ":load":
                     string result = await ProcessFile(spinner, args, ct); return result;
-
+                case ":b":
+                case ":bulk":
+                    return await ProcessBulkFile( spinner, args, ct );
                 default:
                     return $"{command} was not found.";
             }
+        }
+
+        ///<summary>
+        ///Loads in a file containing the names of any other numeber of filenames in the same directory (or subdirectory) and loads them in to Gremlin
+        ///Args should be as follows: :b filename numThreads
+        ///</summary>
+        private static async Task<string> ProcessBulkFile(Spinner spinner, string[] args, CancellationToken ct = default(CancellationToken))
+        {
+
+            if (!File.Exists(args[1]))
+            {
+                throw new ArgumentException("File not found");
+            }
+
+            IEnumerable<String> filesToLoad = File.ReadLines(args[1]);
+
+            ArrayList results = new ArrayList();
+            foreach( String fileName in filesToLoad ){
+                String regex = "([^/]+$)";
+
+                String[] newArgs = new String[5];
+                String newPath = Regex.Replace(args[1],regex,fileName);
+                if ( File.Exists ( newPath ) ) {
+                    
+                    newArgs[0] = ""; //This would usually be :l or :load
+                    newArgs[1] = newPath; //The new path for the file from the regex
+                    newArgs[2] = "0"; //Start at the first line
+                    newArgs[3] = File.ReadLines ( newPath ).Count().ToString(); //Run through the whole file
+                    newArgs[4] = args.Length == 3 ? args.Last() : "8"; //If no specific number of threads requested, default to 8
+
+                    results.Add( await ProcessFile(spinner, newArgs , ct ) );
+                } else {
+                    results.Add( $"The path of {newPath} is not a valid filepath" );
+                }
+            }
+
+            string r = "";
+            foreach( String result in results ) {
+                r += (result + "\n");
+            }
+            return r;
         }
 
         /// <summary>
