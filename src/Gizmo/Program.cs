@@ -290,9 +290,6 @@ namespace Brandmuscle.LocationData.Graph.GremlinConsole
             await lines.ParallelForEachAsync(async rawline =>
              {
                  string line;
-                 if ( String.IsNullOrWhiteSpace( line ) ) {
-                     continue;
-                 }
                  if (rawline.StartsWith(":>"))
                  {
                      line = rawline.Substring(2).Trim();
