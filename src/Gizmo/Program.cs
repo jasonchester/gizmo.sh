@@ -56,24 +56,10 @@ namespace Brandmuscle.LocationData.Graph.GremlinConsole
                 e.Cancel = true;
             };
 
-            // Console.TreatControlCAsInput = true;
-
-            // Console.CancelKeyPress += (s,e) => {
-            //     if(!cts.IsCancellationRequested) {
-            //         cts.Cancel();
-            //         e.Cancel = true;
-            //         //press ctrl-c again to cancel...
-            //     } 
-            //     else {
-            //         Console.WriteLine("Quitting.");
-            //     }
-            // };
-
             _builder = GetConfig();
 
             bool connected = false;
 
-            //temp = new GremlinExecutor(GremlinExecutor.GetGremlinServer(_builder));
             await Spinner.StartAsync("Press a key or attatch debugger.", async spinner =>
             {
                 await Task.WhenAny(
@@ -194,9 +180,6 @@ namespace Brandmuscle.LocationData.Graph.GremlinConsole
                 case ":mode":
                 case ":m":
                     return await SwitchQueryExecutor(ct);
-                case ":l":
-                case ":load":
-                    string result = await ProcessFile(spinner, args, ct); return result;
                 case ":l h":
                 case ":load h":
                     StringBuilder lh = new StringBuilder();
@@ -204,9 +187,9 @@ namespace Brandmuscle.LocationData.Graph.GremlinConsole
                     lh.AppendLine(":l filename startLineOffset numberOfLines numberOfThreads(optional) ");
                     lh.AppendLine(":l /a/b/c/example.gremlin 0 100 8");
                     return lh.ToString();
-                case ":b":
-                case ":bulk":
-                    return await ProcessBulkFile( spinner, args, ct );
+                case ":l":
+                case ":load":
+                    string result = await ProcessFile(spinner, args, ct); return result;
                 case ":b h":
                 case ":bulk h":
                     StringBuilder bh = new StringBuilder();
@@ -214,6 +197,9 @@ namespace Brandmuscle.LocationData.Graph.GremlinConsole
                     bh.AppendLine(":b filename numberOfThreads(optional)");
                     bh.AppendLine(":b /a/b/c/bulk.txt 8");
                     return bh.ToString();
+                case ":b":
+                case ":bulk":
+                    return await ProcessBulkFile( spinner, args, ct );
                 default:
                     return $"{command} was not found.";
             }
@@ -236,21 +222,25 @@ namespace Brandmuscle.LocationData.Graph.GremlinConsole
 
             ArrayList results = new ArrayList();
             foreach( String fileName in filesToLoad ){
-                String regex = "([^/]+$)";
+                try {
+                    String regex = "([^/]+$)";
 
-                String[] newArgs = new String[5];
-                String newPath = Regex.Replace(args[1],regex,fileName);
-                if ( File.Exists ( newPath ) ) {
-                    
-                    newArgs[0] = ""; //This would usually be :l or :load
-                    newArgs[1] = newPath; //The new path for the file from the regex
-                    newArgs[2] = "0"; //Start at the first line
-                    newArgs[3] = File.ReadLines ( newPath ).Count().ToString(); //Run through the whole file
-                    newArgs[4] = args.Length == 3 ? args.Last() : "8"; //If no specific number of threads requested, default to 8
+                    String[] newArgs = new String[5];
+                    String newPath = Regex.Replace(args[1],regex,fileName);
+                    if ( File.Exists ( newPath ) ) {
+                        ConsoleWrite( $"Starting to process {newPath}" );
+                        newArgs[0] = ""; //This would usually be :l or :load
+                        newArgs[1] = newPath; //The new path for the file from the regex
+                        newArgs[2] = "0"; //Start at the first line
+                        newArgs[3] = File.ReadLines ( newPath ).Count().ToString(); //Run through the whole file
+                        newArgs[4] = args.Length == 3 ? args.Last() : "8"; //If no specific number of threads requested, default to 8
 
-                    results.Add( await ProcessFile(spinner, newArgs , ct ) );
-                } else {
-                    results.Add( $"The path of {newPath} is not a valid filepath" );
+                        results.Add( await ProcessFile(spinner, newArgs , ct ) );
+                    } else {
+                        results.Add( $"The path of {newPath} is not a valid filepath" );
+                    }
+                } catch ( Exception e ){
+                    results.Add( e );
                 }
             }
 
@@ -300,6 +290,9 @@ namespace Brandmuscle.LocationData.Graph.GremlinConsole
             await lines.ParallelForEachAsync(async rawline =>
              {
                  string line;
+                 if ( String.IsNullOrWhiteSpace( line ) ) {
+                     continue;
+                 }
                  if (rawline.StartsWith(":>"))
                  {
                      line = rawline.Substring(2).Trim();
