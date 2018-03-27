@@ -240,7 +240,7 @@ namespace Brandmuscle.LocationData.Graph.GremlinConsole
                         results.Add( $"The path of {newPath} is not a valid filepath" );
                     }
                 } catch ( Exception e ){
-                    results.Add( e );
+                    //Eat the error for now
                 }
             }
 
