@@ -3,6 +3,7 @@ using System.Text;
 using System.Threading;
 using System.Threading.Tasks;
 using Gremlin.Net.Driver;
+using Gremlin.Net.Structure.IO.GraphSON;
 using Microsoft.Extensions.Configuration;
 using Newtonsoft.Json;
 
@@ -20,7 +21,7 @@ namespace Brandmuscle.LocationData.Graph.GremlinConsole
         {
             _server = server;
             _partitionKey = builder["cosmosDBConnection:partitionKey"];            
-            _client = new GremlinClient(_server);
+            _client = new GremlinClient(_server, new GraphSON2Reader(), new GraphSON2Writer(), GremlinClient.GraphSON2MimeType);
         }
 
         public GremlinExecutor(IConfigurationRoot builder) : this(GremlinExecutor.GetGremlinServer(builder), builder)
