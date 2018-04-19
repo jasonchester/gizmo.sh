@@ -170,8 +170,8 @@ namespace Brandmuscle.LocationData.Graph.GremlinConsole
                     sb.AppendLine(":quit\t:q\tquit");
                     sb.AppendLine(":clear\t:c\tclear console");
                     sb.AppendLine(":mode\t:m\tswitch query execution mode");
-                    sb.AppendLine(":bulk\t:b\tUses a file containing a list of other files for uploads. Pass in h for more help (:b h)");
-                    sb.AppendLine(":load\t:l\tLoads a file containing Gremlin queries and uploads them. Pass in h for more help (:l h)");
+                    sb.AppendLine(":bulk\t:b\tUses a file containing a list of other files for uploads.");
+                    sb.AppendLine(":load\t:l\tLoads a file containing Gremlin queries and uploads them.");
                     return sb.ToString();
                 case ":clear":
                 case ":c":
@@ -180,23 +180,9 @@ namespace Brandmuscle.LocationData.Graph.GremlinConsole
                 case ":mode":
                 case ":m":
                     return await SwitchQueryExecutor(ct);
-                case ":l h":
-                case ":load h":
-                    StringBuilder lh = new StringBuilder();
-                    lh.AppendLine("Example usage");
-                    lh.AppendLine(":l filename startLineOffset numberOfLines numberOfThreads(optional) ");
-                    lh.AppendLine(":l /a/b/c/example.gremlin 0 100 8");
-                    return lh.ToString();
                 case ":l":
                 case ":load":
                     string result = await ProcessFile(spinner, args, ct); return result;
-                case ":b h":
-                case ":bulk h":
-                    StringBuilder bh = new StringBuilder();
-                    bh.AppendLine("Example usage");
-                    bh.AppendLine(":b filename numberOfThreads(optional)");
-                    bh.AppendLine(":b /a/b/c/bulk.txt 8");
-                    return bh.ToString();
                 case ":b":
                 case ":bulk":
                     return await ProcessBulkFile( spinner, args, ct );
