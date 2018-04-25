@@ -2,6 +2,7 @@
 using System.Collections;
 using System.Collections.Async;
 using System.Collections.Generic;
+using System.Collections.Concurrent;
 using System.Diagnostics;
 using System.IO;
 using System.Linq;
@@ -212,7 +213,7 @@ namespace Brandmuscle.LocationData.Graph.GremlinConsole
                     String regex = "([^/]+$)";
 
                     String[] newArgs = new String[5];
-                    String newPath = Regex.Replace(args[1],regex,fileName);
+                    String newPath = Regex.Replace(args[1],regex,fileName).Trim();
                     if ( File.Exists ( newPath ) ) {
                         ConsoleWrite( $"Starting to process {newPath}" );
                         newArgs[0] = ""; //This would usually be :l or :load
@@ -273,31 +274,43 @@ namespace Brandmuscle.LocationData.Graph.GremlinConsole
             var lines = queries.ToList();
             int totalQueries = lines.Count();
 
+            var failedQueue = new ConcurrentQueue<String>();
+
             await lines.ParallelForEachAsync(async rawline =>
-             {
-                 string line;
-                 if (rawline.StartsWith(":>"))
-                 {
-                     line = rawline.Substring(2).Trim();
-                 }
-                 else
-                 {
-                     line = rawline;
-                 }
-                 var count = Interlocked.Increment(ref globalCount);
-                 var output2 = $"{count + skip,6}: {line}";
-                 spinner.Text = output2.Substring(0, Math.Min(Console.BufferWidth, output2.Length) - 2).PadRight(Console.BufferWidth - 2, ' ');
-                 var result = await currentExecutor.ExecuteQuery(line, ct);
-                 using (var reader = new StringReader(result))
-                 {
-                     var message = reader.ReadLine();
-                     var output = $"{count + skip,8}: [{(double)count / totalQueries * 100:000.0}%] {((double)count) / timer.Elapsed.TotalSeconds:F2} q/s: {message}";
-                     ConsoleWrite(output);
-                 }
-             },
-            maxDegreeOfParalellism: dop,
-            cancellationToken: ct
+                {
+                    string line;
+                    if (rawline.StartsWith(":>"))
+                    {
+                        line = rawline.Substring(2).Trim();
+                    }
+                    else
+                    {
+                        line = rawline;
+                    }
+                    var count = Interlocked.Increment(ref globalCount);
+                    var output2 = $"{count + skip,6}: {line}";
+                    spinner.Text = output2.Substring(0, Math.Min(Console.BufferWidth, output2.Length) - 2).PadRight(Console.BufferWidth - 2, ' ');
+                    var result = await currentExecutor.ExecuteQuery(line, ct);
+                    using (var reader = new StringReader(result))
+                    {
+                        var message = reader.ReadLine();
+                        var resultRegex = new Regex(@"(\d+)( characters)");
+                        var matches = resultRegex.Match(message);
+                        var r = -1;
+                        if ( Int32.TryParse(matches.Groups[1].Value, out r) ) {
+                            if ( r == 0 ){
+                                failedQueue.Enqueue(message);
+                            }
+                        }
+                        var output = $"{count + skip,8}: [{(double)count / totalQueries * 100:000.0}%] {((double)count) / timer.Elapsed.TotalSeconds:F2} q/s: {message}";
+                        ConsoleWrite(output);
+                    }
+                },
+                maxDegreeOfParalellism: dop,
+                cancellationToken: ct
             );
+
+            File.WriteAllLines("./failures.txt",failedQueue);
 
             string resultMessage = $"{globalCount}:[{skip} to {skip + take}] q's. {dop} threads. {timer.Elapsed} {((double)globalCount) / timer.Elapsed.TotalSeconds:F2} q/s";
             return resultMessage;
