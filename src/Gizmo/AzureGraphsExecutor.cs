@@ -25,7 +25,7 @@ namespace Brandmuscle.LocationData.Graph.GremlinConsole
             _graph = graph;
         }
 
-        public async Task<bool> TestConnection(CancellationToken ct= default(CancellationToken))
+        public async Task<bool> TestConnection(CancellationToken ct = default(CancellationToken))
         {
             var connected = false;
             try
@@ -60,7 +60,7 @@ namespace Brandmuscle.LocationData.Graph.GremlinConsole
             _client.Dispose();
         }
 
-        public async Task<string> ExecuteQuery(string gremlinQuery, CancellationToken ct= default(CancellationToken))
+        public async Task<string> ExecuteQuery(string gremlinQuery, CancellationToken ct = default(CancellationToken))
         {
             var timer = new System.Diagnostics.Stopwatch();
             timer.Start();
@@ -69,9 +69,9 @@ namespace Brandmuscle.LocationData.Graph.GremlinConsole
             int count = 0;
             double cost = 0;
             var query = _client.CreateGremlinQuery<dynamic>(_graph, gremlinQuery);
-            while (query.HasMoreResults)
+            while (query.HasMoreResults && !ct.IsCancellationRequested)
             {
-                var feedResponse = await query.ExecuteNextAsync();
+                var feedResponse = await query.ExecuteNextAsync(ct);
                 cost += feedResponse.RequestCharge;
                 foreach (dynamic result in feedResponse)
                 {

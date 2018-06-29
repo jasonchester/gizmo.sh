@@ -27,6 +27,8 @@ namespace Brandmuscle.LocationData.Graph.GremlinConsole
 
         private static IConfigurationRoot _builder;
 
+        private static bool working = false; 
+
         private static IConfigurationRoot GetConfig()
         {
             return new ConfigurationBuilder()
@@ -47,73 +49,94 @@ namespace Brandmuscle.LocationData.Graph.GremlinConsole
             });
         }
 
-        static async Task Main(string[] args)
+        private static CancellationTokenSource cts;
+        private static void HandleCancelKeyPress(object s, ConsoleCancelEventArgs e)
         {
-
-            CancellationTokenSource cts = new CancellationTokenSource();
-
-            Console.CancelKeyPress += (s,e) => {
+            Console.WriteLine("Cancel Pressed.");
+            if (working && cts != null && !cts.IsCancellationRequested)
+            {
                 cts.Cancel();
                 e.Cancel = true;
-            };
-
-            _builder = GetConfig();
-
-            bool connected = false;
-
-            await Spinner.StartAsync("Press a key or attatch debugger.", async spinner =>
-            {
-                await Task.WhenAny(
-                    Task.Delay(5000, cts.Token),
-                    GetKeypress()
-                );
-                spinner.Text = $"Connecting with {nameof(AzureGraphsExecutor)}...";
-                await Task.Run(async () =>
-                {
-                    currentExecutor = await AzureGraphsExecutor.GetExecutor(_builder, cts.Token);
-                    spinner.Text = "Testing Connection.";
-                    connected = await currentExecutor.TestConnection(cts.Token);
-                });
-            });
-
-            if (connected)
-            {
-                Console.WriteLine(startupMsg);
-                Console.WriteLine(currentExecutor.RemoteMessage);
-                Console.WriteLine();
-
-                while (Console.KeyAvailable)
-                {
-                    Console.ReadKey(false);
-                }
-
-                try
-                {
-                    await DoREPL(cts.Token);
-                }
-                catch(TaskCanceledException)
-                {
-                    //intentionally blank.                
-                }
-                catch (Exception ex)
-                {
-                    Console.WriteLine(ex);
-                }
-                finally
-                {
-                    Console.WriteLine("Quitting...");
-                    currentExecutor.Dispose();
-                }
+                Console.WriteLine("Cancelling Tasks.");
             }
         }
 
-        private static async Task DoREPL(CancellationToken ct = default(CancellationToken))
+        static async Task Main(string[] args)
+        {
+            using (cts = new CancellationTokenSource())
+            {
+                Console.CancelKeyPress += HandleCancelKeyPress;
+                _builder = GetConfig();
+
+                bool connected = false;
+
+                await Spinner.StartAsync("Press a key or attatch debugger.", async spinner =>
+                {
+                    await Task.WhenAny(
+                        Task.Delay(5000, cts.Token),
+                        GetKeypress()
+                    );
+                    spinner.Text = $"Connecting with {nameof(AzureGraphsExecutor)}...";
+
+                    try
+                    {
+                        await Task.Run(async () =>
+                        {
+                            currentExecutor = await AzureGraphsExecutor.GetExecutor(_builder, cts.Token);
+                            spinner.Text = "Testing Connection.";
+                            connected = await currentExecutor.TestConnection(cts.Token);
+                        }, cts.Token);
+                    }
+                    catch (TaskCanceledException)
+                    {
+                        //intentionally blank.
+                        Console.WriteLine("Task Cancelled 1...");
+                    }
+                });
+
+                if (connected)
+                {
+                    Console.WriteLine(startupMsg);
+                    Console.WriteLine(currentExecutor.RemoteMessage);
+                    Console.WriteLine();
+
+                    while (Console.KeyAvailable)
+                    {
+                        Console.ReadKey(false);
+                    }
+
+                    try
+                    {
+                        await DoREPL();
+                    }
+                    catch (TaskCanceledException)
+                    {
+                        //intentionally blank.
+                        Console.WriteLine("Task Cancelled 2...");
+                    }
+                    catch (Exception ex)
+                    {
+                        Console.WriteLine(ex);
+                    }
+                    finally
+                    {
+                        Console.WriteLine("Quitting.");
+                        currentExecutor.Dispose();
+                    }
+                }
+
+            }
+        }
+
+        private static async Task DoREPL()
         {
             ReadLine.HistoryEnabled = true;
 
             string input;
             while ((input = ReadLine.Read(prompt)) != ":q")
             {
+                working = true;
+                var ct = cts.Token;
                 if (!string.IsNullOrWhiteSpace(input))
                 {
                     var inputSubstring = input.Substring(0, Math.Min(Console.BufferWidth - 2, input.Length)).PadRight(Console.BufferWidth - 2, ' ');
@@ -136,7 +159,7 @@ namespace Brandmuscle.LocationData.Graph.GremlinConsole
                             {
                                 var message = reader.ReadLine();
 
-                                while (reader.Peek() > 0)
+                                while (reader.Peek() > 0 && !cts.IsCancellationRequested)
                                 {
                                     ConsoleWrite(reader.ReadLine());
                                 }
@@ -149,6 +172,7 @@ namespace Brandmuscle.LocationData.Graph.GremlinConsole
                         }
                     });
                 }
+                working = false;
             }
         }
 
@@ -186,7 +210,7 @@ namespace Brandmuscle.LocationData.Graph.GremlinConsole
                     string result = await ProcessFile(spinner, args, ct); return result;
                 case ":b":
                 case ":bulk":
-                    return await ProcessBulkFile( spinner, args, ct );
+                    return await ProcessBulkFile(spinner, args, ct);
                 default:
                     return $"{command} was not found.";
             }
@@ -208,31 +232,39 @@ namespace Brandmuscle.LocationData.Graph.GremlinConsole
             IEnumerable<String> filesToLoad = File.ReadLines(args[1]);
 
             ArrayList results = new ArrayList();
-            foreach( String fileName in filesToLoad ){
-                try {
+            foreach (String fileName in filesToLoad)
+            {
+                try
+                {
                     String regex = "([^/]+$)";
 
                     String[] newArgs = new String[5];
-                    String newPath = Regex.Replace(args[1],regex,fileName).Trim();
-                    if ( File.Exists ( newPath ) ) {
-                        ConsoleWrite( $"Starting to process {newPath}" );
+                    String newPath = Regex.Replace(args[1], regex, fileName).Trim();
+                    if (File.Exists(newPath))
+                    {
+                        ConsoleWrite($"Starting to process {newPath}");
                         newArgs[0] = ""; //This would usually be :l or :load
                         newArgs[1] = newPath; //The new path for the file from the regex
                         newArgs[2] = "0"; //Start at the first line
-                        newArgs[3] = File.ReadLines ( newPath ).Count().ToString(); //Run through the whole file
+                        newArgs[3] = File.ReadLines(newPath).Count().ToString(); //Run through the whole file
                         newArgs[4] = args.Length == 3 ? args.Last() : "8"; //If no specific number of threads requested, default to 8
 
-                        results.Add( await ProcessFile(spinner, newArgs , ct ) );
-                    } else {
-                        results.Add( $"The path of {newPath} is not a valid filepath" );
+                        results.Add(await ProcessFile(spinner, newArgs, ct));
                     }
-                } catch ( Exception e ){
+                    else
+                    {
+                        results.Add($"The path of {newPath} is not a valid filepath");
+                    }
+                }
+                catch (Exception e)
+                {
                     //Eat the error for now
                 }
             }
 
             string r = "";
-            foreach( String result in results ) {
+            foreach (String result in results)
+            {
                 r += (result + "\n");
             }
             return r;
@@ -297,8 +329,10 @@ namespace Brandmuscle.LocationData.Graph.GremlinConsole
                         var resultRegex = new Regex(@"(\d+)( characters)");
                         var matches = resultRegex.Match(message);
                         var r = -1;
-                        if ( Int32.TryParse(matches.Groups[1].Value, out r) ) {
-                            if ( r == 0 ){
+                        if (Int32.TryParse(matches.Groups[1].Value, out r))
+                        {
+                            if (r == 0)
+                            {
                                 failedQueue.Enqueue(message);
                             }
                         }
@@ -310,7 +344,7 @@ namespace Brandmuscle.LocationData.Graph.GremlinConsole
                 cancellationToken: ct
             );
 
-            File.WriteAllLines("./failures.txt",failedQueue);
+            File.WriteAllLines("./failures.txt", failedQueue);
 
             string resultMessage = $"{globalCount}:[{skip} to {skip + take}] q's. {dop} threads. {timer.Elapsed} {((double)globalCount) / timer.Elapsed.TotalSeconds:F2} q/s";
             return resultMessage;
