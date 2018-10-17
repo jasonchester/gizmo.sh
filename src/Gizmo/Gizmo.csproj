@@ -9,10 +9,14 @@
     <UserSecretsId>Gizmo-Secret-ID</UserSecretsId>
   </PropertyGroup>
 
+  <PropertyGroup>
+    <VersionPrefix>1.0.1</VersionPrefix>
+  </PropertyGroup>
+
   <ItemGroup>
     <PackageReference Include="AsyncEnumerator" Version="2.2.1" />
     <PackageReference Include="Autofac" Version="4.8.1" />
-    <PackageReference Include="Gremlin.Net" Version="3.3.3" />
+    <PackageReference Include="Gremlin.Net" Version="3.4.0-rc2" />
     <PackageReference Include="Kurukuru" Version="1.0.0" />
     <PackageReference Include="Microsoft.Azure.Graphs" Version="0.3.1-preview" />
     <PackageReference Include="Microsoft.Extensions.Configuration" Version="2.1.1" />
@@ -21,7 +25,7 @@
     <PackageReference Include="Microsoft.Extensions.Configuration.UserSecrets" Version="2.1.1" />
     <PackageReference Include="Microsoft.Extensions.Options" Version="2.1.1" />
     <PackageReference Include="Newtonsoft.Json" Version="11.0.2" />
-    <PackageReference Include="ReadLine" Version="2.0.1" />
+    <PackageReference Include="Rubberduck.ReadLine" Version="2.1.0" />
   </ItemGroup>
 
   <ItemGroup>
