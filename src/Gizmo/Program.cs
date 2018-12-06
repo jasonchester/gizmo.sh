@@ -27,7 +27,7 @@ namespace Brandmuscle.LocationData.Graph.GremlinConsole
 
         private static IConfigurationRoot _builder;
 
-        private static bool working = false; 
+        private static bool working = false;
 
         private static IConfigurationRoot GetConfig()
         {
@@ -48,7 +48,6 @@ namespace Brandmuscle.LocationData.Graph.GremlinConsole
                 //https://stackoverflow.com/questions/3769770/clear-console-buffer
             });
         }
-
         private static CancellationTokenSource cts;
         private static void HandleCancelKeyPress(object s, ConsoleCancelEventArgs e)
         {
@@ -63,13 +62,15 @@ namespace Brandmuscle.LocationData.Graph.GremlinConsole
 
         static async Task Main(string[] args)
         {
+            System.Console.OutputEncoding = System.Text.Encoding.UTF8;
+
+            bool connected = false;
+
+            _builder = GetConfig();
+            Console.CancelKeyPress += HandleCancelKeyPress;
+
             using (cts = new CancellationTokenSource())
             {
-                Console.CancelKeyPress += HandleCancelKeyPress;
-                _builder = GetConfig();
-
-                bool connected = false;
-
                 await Spinner.StartAsync("Press a key or attatch debugger.", async spinner =>
                 {
                     await Task.WhenAny(
@@ -93,38 +94,34 @@ namespace Brandmuscle.LocationData.Graph.GremlinConsole
                         Console.WriteLine("Task Cancelled 1...");
                     }
                 });
+            }
 
-                if (connected)
+
+            if (connected)
+            {
+                Console.WriteLine(startupMsg);
+                Console.WriteLine(currentExecutor.RemoteMessage);
+                Console.WriteLine();
+
+                while (Console.KeyAvailable)
                 {
-                    Console.WriteLine(startupMsg);
-                    Console.WriteLine(currentExecutor.RemoteMessage);
-                    Console.WriteLine();
-
-                    while (Console.KeyAvailable)
-                    {
-                        Console.ReadKey(false);
-                    }
-
-                    try
-                    {
-                        await DoREPL();
-                    }
-                    catch (TaskCanceledException)
-                    {
-                        //intentionally blank.
-                        Console.WriteLine("Task Cancelled 2...");
-                    }
-                    catch (Exception ex)
-                    {
-                        Console.WriteLine(ex);
-                    }
-                    finally
-                    {
-                        Console.WriteLine("Quitting.");
-                        currentExecutor.Dispose();
-                    }
+                    Console.ReadKey(false);
                 }
 
+                try
+                {
+                    await DoREPL();
+                }
+
+                catch (Exception ex)
+                {
+                    Console.WriteLine(ex);
+                }
+                finally
+                {
+                    Console.WriteLine("Quitting.");
+                    currentExecutor.Dispose();
+                }
             }
         }
 
@@ -136,41 +133,50 @@ namespace Brandmuscle.LocationData.Graph.GremlinConsole
             while ((input = ReadLine.Read(prompt)) != ":q")
             {
                 working = true;
-                var ct = cts.Token;
+
                 if (!string.IsNullOrWhiteSpace(input))
                 {
-                    var inputSubstring = input.Substring(0, Math.Min(Console.BufferWidth - 2, input.Length)).PadRight(Console.BufferWidth - 2, ' ');
-                    await Spinner.StartAsync(inputSubstring, async spinner =>
+                    using (cts = new CancellationTokenSource())
                     {
-                        try
+                        var inputSubstring = input.Substring(0, Math.Min(Console.BufferWidth - 2, input.Length));//.PadRight(Console.BufferWidth - 2, ' ');
+                        await Spinner.StartAsync(inputSubstring, async spinner =>
                         {
-                            string result = "";
-                            switch (input)
+                            try
                             {
-                                case var command when input.StartsWith(":"):
-                                    result = await DoCommand(command, spinner, ct);
-                                    break;
-
-                                case var query when !string.IsNullOrWhiteSpace(query):
-                                    result = await currentExecutor.ExecuteQuery(query, ct);
-                                    break;
-                            }
-                            using (var reader = new StringReader(result))
-                            {
-                                var message = reader.ReadLine();
-
-                                while (reader.Peek() > 0 && !cts.IsCancellationRequested)
+                                string result = "";
+                                switch (input)
                                 {
-                                    ConsoleWrite(reader.ReadLine());
+                                    case var command when input.StartsWith(":"):
+                                        result = await DoCommand(command, spinner, cts.Token);
+                                        break;
+
+                                    case var query when !string.IsNullOrWhiteSpace(query):
+                                        result = await currentExecutor.ExecuteQuery(query, cts.Token);
+                                        break;
                                 }
-                                spinner.Succeed(message);
+
+                                var message = string.Empty;
+
+                                using (var reader = new StringReader(result))
+                                {
+                                    message = reader.ReadLine();
+
+                                    spinner.Succeed(message);
+
+                                    while (reader.Peek() > 0 && !cts.IsCancellationRequested)
+                                    {
+                                        Console.WriteLine(reader.ReadLine());
+                                    }
+                                    // Console.WriteLine(reader.ReadToEnd());
+                                    Console.Out.Flush();
+                                }
                             }
-                        }
-                        catch (Exception ex)
-                        {
-                            spinner.Fail(ex.Message);
-                        }
-                    });
+                            catch (Exception ex)
+                            {
+                                spinner.Fail(ex.Message);
+                            }
+                        });
+                    }
                 }
                 working = false;
             }
@@ -222,8 +228,6 @@ namespace Brandmuscle.LocationData.Graph.GremlinConsole
         ///</summary>
         private static async Task<string> ProcessBulkFile(Spinner spinner, string[] args, CancellationToken ct = default(CancellationToken))
         {
-
-
             if (!File.Exists(args[1]))
             {
                 throw new ArgumentException("File not found");
