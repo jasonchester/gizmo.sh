@@ -83,11 +83,8 @@ namespace Brandmuscle.LocationData.Graph.GremlinConsole
             return output.ToString();
         }
 
-        private static DocumentClient GetDocumentClient(IConfigurationRoot builder)
+        private static DocumentClient GetDocumentClient(CosmosDbConnection config)
         {
-            var endpoint = builder["cosmosDBConnection:documentEndpoint"];
-            var authKey = builder["cosmosDBConnection:authKey"];
-
             // connection issues on osx
             // https://github.com/Azure/azure-documentdb-dotnet/issues/194
             ConnectionPolicy connectionPolicy = new ConnectionPolicy();
@@ -97,30 +94,61 @@ namespace Brandmuscle.LocationData.Graph.GremlinConsole
             }
 
             var client = new DocumentClient(
-                new Uri(endpoint),
-                authKey,
+                config.DocumentEndpoint,
+                config.AuthKey,
                 connectionPolicy);
 
             return client;
         }
 
-        private static async Task<DocumentCollection> GetDocumentCollection(DocumentClient client, IConfigurationRoot builder, CancellationToken ct= default(CancellationToken))
+        // private static DocumentClient GetDocumentClient(IConfigurationRoot builder)
+        // {
+        //     var endpoint = builder["cosmosDBConnection:documentEndpoint"];
+        //     var authKey = builder["cosmosDBConnection:authKey"];
+
+        //     // connection issues on osx
+        //     // https://github.com/Azure/azure-documentdb-dotnet/issues/194
+        //     ConnectionPolicy connectionPolicy = new ConnectionPolicy();
+        //     if (RuntimeInformation.IsOSPlatform(OSPlatform.Windows)) {
+        //         connectionPolicy.ConnectionMode = ConnectionMode.Direct;
+        //         connectionPolicy.ConnectionProtocol = Protocol.Tcp;
+        //     }
+
+        //     var client = new DocumentClient(
+        //         new Uri(endpoint),
+        //         authKey,
+        //         connectionPolicy);
+
+        //     return client;
+        // }
+
+        private static async Task<DocumentCollection> GetDocumentCollection(DocumentClient client, CosmosDbConnection config, CancellationToken ct= default(CancellationToken))
         {
-            var databaseId = builder["cosmosDBConnection:databaseId"];
-            var graphId = builder["cosmosDBConnection:graphId"];
+            // var databaseId = builder["cosmosDBConnection:databaseId"];
+            // var graphId = builder["cosmosDBConnection:graphId"];
 
             var graph = await client.CreateDocumentCollectionIfNotExistsAsync(
-                UriFactory.CreateDatabaseUri(databaseId),
-                new DocumentCollection {Id = graphId});
+                UriFactory.CreateDatabaseUri(config.DatabaseId),
+                new DocumentCollection {Id = config.GraphId});
             return graph;
         }
 
-        public static async Task<AzureGraphsExecutor> GetExecutor(IConfigurationRoot builder, CancellationToken ct= default(CancellationToken))
+        // public static async Task<AzureGraphsExecutor> GetExecutor(IConfigurationRoot builder, CancellationToken ct= default(CancellationToken))
+        // {
+        //     DocumentClient client = AzureGraphsExecutor.GetDocumentClient(builder);
+        //     var temp = new AzureGraphsExecutor(
+        //         client,
+        //         await AzureGraphsExecutor.GetDocumentCollection(client, builder)
+        //     );
+        //     return temp;
+        // }
+
+        public static async Task<AzureGraphsExecutor> GetExecutor(CosmosDbConnection config, CancellationToken ct= default(CancellationToken))
         {
-            DocumentClient client = AzureGraphsExecutor.GetDocumentClient(builder);
+            DocumentClient client = AzureGraphsExecutor.GetDocumentClient(config);
             var temp = new AzureGraphsExecutor(
                 client,
-                await AzureGraphsExecutor.GetDocumentCollection(client, builder)
+                await AzureGraphsExecutor.GetDocumentCollection(client, config)
             );
             return temp;
         }

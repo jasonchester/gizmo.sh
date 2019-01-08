@@ -17,14 +17,14 @@ namespace Brandmuscle.LocationData.Graph.GremlinConsole
         private readonly string _partitionKey;
         public string RemoteMessage => $"gremlin: {_server.Username}@{_server.Uri}";
 
-        public GremlinExecutor(GremlinServer server, IConfigurationRoot builder)
+        public GremlinExecutor(GremlinServer server, CosmosDbConnection config)
         {
             _server = server;
-            _partitionKey = builder["cosmosDBConnection:partitionKey"];            
+            _partitionKey = config.PartitionKey;
             _client = new GremlinClient(_server, new GraphSON2Reader(), new GraphSON2Writer(), GremlinClient.GraphSON2MimeType);
         }
 
-        public GremlinExecutor(IConfigurationRoot builder) : this(GremlinExecutor.GetGremlinServer(builder), builder)
+        public GremlinExecutor(CosmosDbConnection config) : this(GremlinExecutor.GetGremlinServer(config), config)
         {
             //intentionally blank
         }
@@ -73,13 +73,13 @@ namespace Brandmuscle.LocationData.Graph.GremlinConsole
             return output.ToString();
         }
 
-        private static GremlinServer GetGremlinServer(IConfigurationRoot builder)
+        private static GremlinServer GetGremlinServer(CosmosDbConnection config)
         {
-            var hostname = builder["cosmosDBConnection:gremlinEndpoint"];
-            var port = builder.GetValue<int>("cosmosDBConnection:gremlinPort", 443);
-            var authKey = builder["cosmosDBConnection:authKey"];
-            var databaseId = builder["cosmosDBConnection:databaseId"];
-            var graphId = builder["cosmosDBConnection:graphId"];
+            var hostname = config.GremlinEndpoint;
+            var port = config.GremlinPort;
+            var authKey = config.AuthKey;
+            var databaseId = config.DatabaseId;
+            var graphId = config.GraphId;
 
             var gremlinServer = new GremlinServer(hostname, port, enableSsl: true, username: $"/dbs/{databaseId}/colls/{graphId}", password: authKey);
             return gremlinServer;

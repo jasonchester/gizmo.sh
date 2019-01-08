@@ -260,7 +260,7 @@ namespace Brandmuscle.LocationData.Graph.GremlinConsole
                         results.Add($"The path of {newPath} is not a valid filepath");
                     }
                 }
-                catch (Exception e)
+                catch (Exception)
                 {
                     //Eat the error for now
                 }
@@ -363,12 +363,17 @@ namespace Brandmuscle.LocationData.Graph.GremlinConsole
         private static async Task<string> SwitchQueryExecutor(CancellationToken ct = default(CancellationToken))
         {
             IQueryExecutor newExec = null;
+
+            AppSettings settings = new AppSettings();
+
+            _builder.Bind(settings);
+
             try
             {
                 switch (currentExecutor)
                 {
                     case GremlinExecutor e:
-                        newExec = await AzureGraphsExecutor.GetExecutor(_builder, ct);
+                        newExec = await AzureGraphsExecutor.GetExecutor(settings.CosmosDbConnections["default"], ct);
                         break;
                     case AzureGraphsExecutor e:
                         newExec = new GremlinExecutor(_builder);
