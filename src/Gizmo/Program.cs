@@ -29,11 +29,12 @@ namespace Brandmuscle.LocationData.Graph.GremlinConsole
 
         private static bool working = false;
 
-        private static IConfigurationRoot GetConfig()
+        private static IConfigurationRoot GetConfig(string[] args)
         {
             return new ConfigurationBuilder()
                 .AddJsonFile("appsettings.json")
                 .AddUserSecrets<Program>()
+                .AddCommandLine(args)
                 .Build();
         }
 
@@ -48,7 +49,9 @@ namespace Brandmuscle.LocationData.Graph.GremlinConsole
                 //https://stackoverflow.com/questions/3769770/clear-console-buffer
             });
         }
+        
         private static CancellationTokenSource cts;
+        
         private static void HandleCancelKeyPress(object s, ConsoleCancelEventArgs e)
         {
             Console.WriteLine("Cancel Pressed.");
@@ -59,14 +62,14 @@ namespace Brandmuscle.LocationData.Graph.GremlinConsole
                 Console.WriteLine("Cancelling Tasks.");
             }
         }
-
+        
         static async Task Main(string[] args)
         {
             System.Console.OutputEncoding = System.Text.Encoding.UTF8;
 
             bool connected = false;
 
-            _builder = GetConfig();
+            _builder = GetConfig(args);
             Console.CancelKeyPress += HandleCancelKeyPress;
 
             using (cts = new CancellationTokenSource())
@@ -83,7 +86,11 @@ namespace Brandmuscle.LocationData.Graph.GremlinConsole
                     {
                         await Task.Run(async () =>
                         {
-                            currentExecutor = await AzureGraphsExecutor.GetExecutor(_builder, cts.Token);
+                            var config = new AppSettings();
+
+                            _builder.Bind(config);
+
+                            currentExecutor = await AzureGraphsExecutor.GetExecutor(config.CosmosDbConnections["default"], cts.Token);
                             spinner.Text = "Testing Connection.";
                             connected = await currentExecutor.TestConnection(cts.Token);
                         }, cts.Token);
@@ -124,7 +131,7 @@ namespace Brandmuscle.LocationData.Graph.GremlinConsole
                 }
             }
         }
-
+        
         private static async Task DoREPL()
         {
             ReadLine.HistoryEnabled = true;
@@ -363,9 +370,7 @@ namespace Brandmuscle.LocationData.Graph.GremlinConsole
         private static async Task<string> SwitchQueryExecutor(CancellationToken ct = default(CancellationToken))
         {
             IQueryExecutor newExec = null;
-
             AppSettings settings = new AppSettings();
-
             _builder.Bind(settings);
 
             try
@@ -376,7 +381,7 @@ namespace Brandmuscle.LocationData.Graph.GremlinConsole
                         newExec = await AzureGraphsExecutor.GetExecutor(settings.CosmosDbConnections["default"], ct);
                         break;
                     case AzureGraphsExecutor e:
-                        newExec = new GremlinExecutor(_builder);
+                        newExec = new GremlinExecutor(settings.CosmosDbConnections["default"]);
                         break;
                 }
             }
