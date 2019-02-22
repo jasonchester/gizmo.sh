@@ -138,7 +138,7 @@ namespace Gizmo
             ReadLine.HistoryEnabled = true;
 
             string input;
-            while ((input = ReadLine.Read(prompt)) != ":q")
+            while ((input = ReadLine.Read(prompt)).IsNotQuit())
             {
                 working = true;
 
