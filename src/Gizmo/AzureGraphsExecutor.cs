@@ -134,13 +134,14 @@ namespace Gizmo
 
                 var data = responses.SelectMany(r => r).ToList();
 
+                double requestCharge = responses.Sum(r => r.RequestCharge);
                 var attributes = new Dictionary<string, object>
                 {
-                    ["RequestCharge"] = responses.Sum(r => r.RequestCharge),
+                    ["RequestCharge"] = requestCharge,
                     ["ElapsedTime"] = timer.Elapsed
                 };
 
-                return new QueryResultSet<T>(_query, data.AsReadOnly(), timer.Elapsed, attributes);
+                return new QueryResultSet<T>(_query, data.AsReadOnly(), timer.Elapsed, requestCharge, attributes);
             }
         }
     }

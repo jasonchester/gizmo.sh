@@ -56,7 +56,9 @@ namespace Gizmo
             timer.Start();
             var results = await _client.SubmitAsync<T>(query);
             timer.Stop();
-            return new QueryResultSet<T>(query, results, timer.Elapsed, results.StatusAttributes);
+
+            var requestCharge = (double)results.StatusAttributes["x-ms-total-request-charge"];
+            return new QueryResultSet<T>(query, results, timer.Elapsed, requestCharge, results.StatusAttributes);
         }
 
         private static GremlinServer GetGremlinServer(CosmosDbConnection config)

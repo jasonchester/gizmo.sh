@@ -13,6 +13,8 @@ namespace Gizmo
         public string Query { get; }
         public TimeSpan ElapsedTime { get; }
 
+        public double RequestCharge { get; }
+
         /// <summary>
         ///     Gets or sets the status attributes from the gremlin response
         /// </summary>
@@ -23,11 +25,12 @@ namespace Gizmo
         /// </summary>
         /// <param name="data"></param>
         /// <param name="attributes"></param>
-        public QueryResultSet(string query, IReadOnlyCollection<T> data, TimeSpan elapsedTime, IReadOnlyDictionary<string, object> attributes)
+        public QueryResultSet(string query, IReadOnlyCollection<T> data, TimeSpan elapsedTime, double requestCharge, IReadOnlyDictionary<string, object> attributes)
         {
             Query = query;
             _data = data;
             ElapsedTime = elapsedTime;
+            RequestCharge = requestCharge;
             this.StatusAttributes = attributes;
         }
 
@@ -53,10 +56,9 @@ namespace Gizmo
         /// <inheritdoc />
         public override string ToString()
         {
-            return $"executed in {ElapsedTime}. {Count} results.";
+            return $"executed in {ElapsedTime}, RUs {RequestCharge}, {Count} results.";
         }
 
         public string ResultsToJson(Formatting formatting = Formatting.None) => JsonConvert.SerializeObject(_data, formatting);
-
     }
 }
