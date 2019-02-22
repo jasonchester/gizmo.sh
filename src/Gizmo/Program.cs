@@ -13,7 +13,7 @@ using System.Threading.Tasks;
 using Kurukuru;
 using Microsoft.Extensions.Configuration;
 
-namespace Brandmuscle.LocationData.Graph.GremlinConsole
+namespace Gizmo
 {
     class Program
     {
@@ -42,7 +42,7 @@ namespace Brandmuscle.LocationData.Graph.GremlinConsole
         {
             return Task.Run(() =>
             {
-                while (!Console.KeyAvailable)
+                while (!Console.IsInputRedirected && !Console.KeyAvailable)
                 {
                     Thread.Sleep(10);
                 }
@@ -110,7 +110,8 @@ namespace Brandmuscle.LocationData.Graph.GremlinConsole
                 Console.WriteLine(currentExecutor.RemoteMessage);
                 Console.WriteLine();
 
-                while (Console.KeyAvailable)
+                
+                while (!Console.IsInputRedirected && Console.KeyAvailable)
                 {
                     Console.ReadKey(false);
                 }
@@ -150,7 +151,7 @@ namespace Brandmuscle.LocationData.Graph.GremlinConsole
                         {
                             try
                             {
-                                string result = "";
+                                IOperationResult result = CommandResult.Empty;
                                 switch (input)
                                 {
                                     case var command when input.StartsWith(":"):
@@ -158,23 +159,24 @@ namespace Brandmuscle.LocationData.Graph.GremlinConsole
                                         break;
 
                                     case var query when !string.IsNullOrWhiteSpace(query):
-                                        result = await currentExecutor.ExecuteQuery(query, cts.Token);
+                                        result = await currentExecutor.ExecuteQuery<dynamic>(query, cts.Token);
                                         break;
                                 }
 
                                 var message = string.Empty;
 
-                                using (var reader = new StringReader(result))
+                                spinner.Succeed(result.Message);
+
+                                using (var reader = new StringReader(result.Details))
                                 {
-                                    message = reader.ReadLine();
+                                    spinner.Succeed(result.Message);
 
-                                    spinner.Succeed(message);
-
+                                    //we do this to allow a user to ctrl-c break the spooling
+                                    //of a lengthy response. 
                                     while (reader.Peek() > 0 && !cts.IsCancellationRequested)
                                     {
                                         Console.WriteLine(reader.ReadLine());
                                     }
-                                    // Console.WriteLine(reader.ReadToEnd());
                                     Console.Out.Flush();
                                 }
                             }
@@ -183,6 +185,16 @@ namespace Brandmuscle.LocationData.Graph.GremlinConsole
                                 spinner.Fail(ex.Message);
                             }
                         });
+                    }
+                }
+                else 
+                {
+                    //remove all blank lines
+                    var history = ReadLine.GetHistory().Where(h => !string.IsNullOrWhiteSpace(h));
+                    ReadLine.ClearHistory();
+                    foreach(var h in history) 
+                    {
+                        ReadLine.AddHistory(h);
                     }
                 }
                 working = false;
@@ -195,7 +207,7 @@ namespace Brandmuscle.LocationData.Graph.GremlinConsole
         ///<param name="ct">Cancellation token to kill off threads if necessary </param>
         ///Processes user input for anything that's not a direct Gremlin query
         ///</summary>
-        private static async Task<string> DoCommand(string command, Spinner spinner = null, CancellationToken ct = default(CancellationToken))
+        private static async Task<IOperationResult> DoCommand(string command, Spinner spinner = null, CancellationToken ct = default(CancellationToken))
         {
             var args = command.Split(" ");
 
@@ -210,22 +222,22 @@ namespace Brandmuscle.LocationData.Graph.GremlinConsole
                     sb.AppendLine(":mode\t:m\tswitch query execution mode");
                     sb.AppendLine(":bulk\t:b\tUses a file containing a list of other files for uploads.");
                     sb.AppendLine(":load\t:l\tLoads a file containing Gremlin queries and uploads them.");
-                    return sb.ToString();
+                    return new CommandResult(sb.ToString());
                 case ":clear":
                 case ":c":
                     Console.Clear();
-                    return "cleared";
+                    return new CommandResult("cleared");
                 case ":mode":
                 case ":m":
-                    return await SwitchQueryExecutor(ct);
+                    return new CommandResult(await SwitchQueryExecutor(ct));
                 case ":l":
                 case ":load":
-                    string result = await ProcessFile(spinner, args, ct); return result;
+                    return new CommandResult(await ProcessFile(spinner, args, ct));
                 case ":b":
                 case ":bulk":
-                    return await ProcessBulkFile(spinner, args, ct);
+                    return new CommandResult(await ProcessBulkFile(spinner, args, ct));
                 default:
-                    return $"{command} was not found.";
+                    return new CommandResult($"{command} was not found.");
             }
         }
 
@@ -333,8 +345,8 @@ namespace Brandmuscle.LocationData.Graph.GremlinConsole
                     var count = Interlocked.Increment(ref globalCount);
                     var output2 = $"{count + skip,6}: {line}";
                     spinner.Text = output2.Substring(0, Math.Min(Console.BufferWidth, output2.Length) - 2).PadRight(Console.BufferWidth - 2, ' ');
-                    var result = await currentExecutor.ExecuteQuery(line, ct);
-                    using (var reader = new StringReader(result))
+                    var result = await currentExecutor.ExecuteQuery<dynamic>(line, ct);
+                    using (var reader = new StringReader(result.ToString()))
                     {
                         var message = reader.ReadLine();
                         var resultRegex = new Regex(@"(\d+)( characters)");

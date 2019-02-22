@@ -1,4 +1,6 @@
 using System;
+using System.Collections.Generic;
+using System.Diagnostics;
 using System.Linq;
 using System.Runtime.InteropServices;
 using System.Text;
@@ -10,7 +12,7 @@ using Microsoft.Azure.Graphs;
 using Microsoft.Extensions.Configuration;
 using Newtonsoft.Json;
 
-namespace Brandmuscle.LocationData.Graph.GremlinConsole
+namespace Gizmo
 {
     public class AzureGraphsExecutor : IQueryExecutor
     {
@@ -30,21 +32,13 @@ namespace Brandmuscle.LocationData.Graph.GremlinConsole
             var connected = false;
             try
             {
-                string q;
-                if(_graph.PartitionKey.Paths.Any())
-                {
-                    var partitionKey = _graph.PartitionKey.Paths.FirstOrDefault().TrimStart('\\');
-                    q = $"g.V('').has('{partitionKey}','').count();";
-                }
-                else 
-                {
-                    q = "g.V('').count();"; 
-                }
+                string q = "g.inject(true);";
                 var query = _client.CreateGremlinQuery(_graph, q);
-                while (query.HasMoreResults) {
+                if (query.HasMoreResults)
+                {
                     await query.ExecuteNextAsync<dynamic>();
+                    connected = true;
                 }
-                connected = true;
             }
             catch (Exception ex)
             {
@@ -60,27 +54,26 @@ namespace Brandmuscle.LocationData.Graph.GremlinConsole
             _client.Dispose();
         }
 
-        public async Task<string> ExecuteQuery(string gremlinQuery, CancellationToken ct = default(CancellationToken))
+        public async Task<QueryResultSet<T>> ExecuteQuery<T>(string query, CancellationToken ct = default)
         {
             var timer = new System.Diagnostics.Stopwatch();
             timer.Start();
 
-            var output = new StringBuilder();
-            int count = 0;
-            double cost = 0;
-            var query = _client.CreateGremlinQuery<dynamic>(_graph, gremlinQuery);
-            while (query.HasMoreResults && !ct.IsCancellationRequested)
+            // var output = new StringBuilder();
+            // int count = 0;
+            // double cost = 0;
+            var q = _client.CreateGremlinQuery<T>(_graph, query);
+
+
+            var results = new FeedResponseAggregator<T>(query);
+            while (q.HasMoreResults && !ct.IsCancellationRequested)
             {
-                var feedResponse = await query.ExecuteNextAsync(ct);
-                cost += feedResponse.RequestCharge;
-                foreach (dynamic result in feedResponse)
-                {
-                    output.AppendLine($"{JsonConvert.SerializeObject(result, Formatting.Indented)}");
-                    count++;
-                }
+                var feedResponse = await q.ExecuteNextAsync<T>(ct);
+                results.AddResponse(feedResponse);
             }
-            output.Insert(0, $"executed in {timer.Elapsed}. {cost:N2} RUs. {count} results. {output.Length} characters.{Environment.NewLine}");
-            return output.ToString();
+            //output.Insert(0, $"executed in {timer.Elapsed}. {cost:N2} RUs. {count} results. {output.Length} characters.{Environment.NewLine}");
+            //return output.ToString();
+            return results.ToQueryResultSet();
         }
 
         private static DocumentClient GetDocumentClient(CosmosDbConnection config)
@@ -88,7 +81,8 @@ namespace Brandmuscle.LocationData.Graph.GremlinConsole
             // connection issues on osx
             // https://github.com/Azure/azure-documentdb-dotnet/issues/194
             ConnectionPolicy connectionPolicy = new ConnectionPolicy();
-            if (RuntimeInformation.IsOSPlatform(OSPlatform.Windows)) {
+            if (RuntimeInformation.IsOSPlatform(OSPlatform.Windows))
+            {
                 connectionPolicy.ConnectionMode = ConnectionMode.Direct;
                 connectionPolicy.ConnectionProtocol = Protocol.Tcp;
             }
@@ -101,49 +95,15 @@ namespace Brandmuscle.LocationData.Graph.GremlinConsole
             return client;
         }
 
-        // private static DocumentClient GetDocumentClient(IConfigurationRoot builder)
-        // {
-        //     var endpoint = builder["cosmosDBConnection:documentEndpoint"];
-        //     var authKey = builder["cosmosDBConnection:authKey"];
-
-        //     // connection issues on osx
-        //     // https://github.com/Azure/azure-documentdb-dotnet/issues/194
-        //     ConnectionPolicy connectionPolicy = new ConnectionPolicy();
-        //     if (RuntimeInformation.IsOSPlatform(OSPlatform.Windows)) {
-        //         connectionPolicy.ConnectionMode = ConnectionMode.Direct;
-        //         connectionPolicy.ConnectionProtocol = Protocol.Tcp;
-        //     }
-
-        //     var client = new DocumentClient(
-        //         new Uri(endpoint),
-        //         authKey,
-        //         connectionPolicy);
-
-        //     return client;
-        // }
-
-        private static async Task<DocumentCollection> GetDocumentCollection(DocumentClient client, CosmosDbConnection config, CancellationToken ct= default(CancellationToken))
+        private static async Task<DocumentCollection> GetDocumentCollection(DocumentClient client, CosmosDbConnection config, CancellationToken ct = default(CancellationToken))
         {
-            // var databaseId = builder["cosmosDBConnection:databaseId"];
-            // var graphId = builder["cosmosDBConnection:graphId"];
-
             var graph = await client.CreateDocumentCollectionIfNotExistsAsync(
                 UriFactory.CreateDatabaseUri(config.DatabaseId),
-                new DocumentCollection {Id = config.GraphId});
+                new DocumentCollection { Id = config.GraphId });
             return graph;
         }
 
-        // public static async Task<AzureGraphsExecutor> GetExecutor(IConfigurationRoot builder, CancellationToken ct= default(CancellationToken))
-        // {
-        //     DocumentClient client = AzureGraphsExecutor.GetDocumentClient(builder);
-        //     var temp = new AzureGraphsExecutor(
-        //         client,
-        //         await AzureGraphsExecutor.GetDocumentCollection(client, builder)
-        //     );
-        //     return temp;
-        // }
-
-        public static async Task<AzureGraphsExecutor> GetExecutor(CosmosDbConnection config, CancellationToken ct= default(CancellationToken))
+        public static async Task<AzureGraphsExecutor> GetExecutor(CosmosDbConnection config, CancellationToken ct = default(CancellationToken))
         {
             DocumentClient client = AzureGraphsExecutor.GetDocumentClient(config);
             var temp = new AzureGraphsExecutor(
@@ -151,6 +111,37 @@ namespace Brandmuscle.LocationData.Graph.GremlinConsole
                 await AzureGraphsExecutor.GetDocumentCollection(client, config)
             );
             return temp;
+        }
+        private class FeedResponseAggregator<T>
+        {
+            private readonly string _query;
+            private readonly List<FeedResponse<T>> responses = new List<FeedResponse<T>>();
+            private readonly Stopwatch timer = Stopwatch.StartNew();
+
+            public FeedResponseAggregator(string query)
+            {
+                _query = query;
+            }
+
+            public void AddResponse(FeedResponse<T> response)
+            {
+                responses.Add(response);
+            }
+
+            public QueryResultSet<T> ToQueryResultSet()
+            {
+                timer.Stop();
+
+                var data = responses.SelectMany(r => r).ToList();
+
+                var attributes = new Dictionary<string, object>
+                {
+                    ["RequestCharge"] = responses.Sum(r => r.RequestCharge),
+                    ["ElapsedTime"] = timer.Elapsed
+                };
+
+                return new QueryResultSet<T>(_query, data.AsReadOnly(), timer.Elapsed, attributes);
+            }
         }
     }
 }

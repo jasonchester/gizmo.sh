@@ -10,12 +10,12 @@
   </PropertyGroup>
 
   <PropertyGroup>
-    <VersionPrefix>1.0.2</VersionPrefix>
+    <VersionPrefix>1.0.3</VersionPrefix>
   </PropertyGroup>
 
   <ItemGroup>
-    <PackageReference Include="AsyncEnumerator" Version="2.2.1" />
-    <PackageReference Include="Autofac" Version="4.8.1" />
+    <PackageReference Include="AsyncEnumerator" Version="2.2.2" />
+    <PackageReference Include="Autofac" Version="4.9.1" />
     <PackageReference Include="Gremlin.Net" Version="3.4.0" />
     <PackageReference Include="Kurukuru" Version="1.0.0" />
     <PackageReference Include="Microsoft.Azure.Graphs" Version="0.3.1-preview" />

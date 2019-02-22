@@ -2,12 +2,13 @@ using System;
 using System.Text;
 using System.Threading;
 using System.Threading.Tasks;
+using Gizmo;
 using Gremlin.Net.Driver;
 using Gremlin.Net.Structure.IO.GraphSON;
 using Microsoft.Extensions.Configuration;
 using Newtonsoft.Json;
 
-namespace Brandmuscle.LocationData.Graph.GremlinConsole
+namespace Gizmo
 {
     public class GremlinExecutor : IQueryExecutor
     {
@@ -39,38 +40,23 @@ namespace Brandmuscle.LocationData.Graph.GremlinConsole
             var connected = false;
             try
             {
-                string q;
-                if(string.IsNullOrWhiteSpace(_partitionKey))
-                {             
-                    q = "g.V('').count();";
-                }
-                else
-                {
-                    q = $"g.V('').has('{_partitionKey}','').count();";
-                }
-                await _client.SubmitWithSingleResultAsync<dynamic>(q);
-                connected = true;
+                connected = await _client.SubmitWithSingleResultAsync<bool>("g.inject(true);");
             }
             catch (Exception ex)
             {
                 Console.WriteLine("Unable to connect to gremlin server. Please check you appsettings.json");
                 Console.WriteLine(ex);
             }
-
             return connected;
         }
 
-        public async Task<string> ExecuteQuery(string query, CancellationToken ct = default(CancellationToken))
+        public async Task<QueryResultSet<T>> ExecuteQuery<T>(string query, CancellationToken ct = default(CancellationToken))
         {
             var timer = new System.Diagnostics.Stopwatch();
             timer.Start();
-            var output = new StringBuilder();
-
-            var results = await _client.SubmitAsync<dynamic>(query);
-            
-            output.AppendLine($"executed in {timer.Elapsed}. {results.Count} results. {output.Length} characters.");
-            output.AppendLine(JsonConvert.SerializeObject(results, Formatting.Indented));
-            return output.ToString();
+            var results = await _client.SubmitAsync<T>(query);
+            timer.Stop();
+            return new QueryResultSet<T>(query, results, timer.Elapsed, results.StatusAttributes);
         }
 
         private static GremlinServer GetGremlinServer(CosmosDbConnection config)
@@ -84,5 +70,8 @@ namespace Brandmuscle.LocationData.Graph.GremlinConsole
             var gremlinServer = new GremlinServer(hostname, port, enableSsl: true, username: $"/dbs/{databaseId}/colls/{graphId}", password: authKey);
             return gremlinServer;
         }
+
     }
+
+
 }
