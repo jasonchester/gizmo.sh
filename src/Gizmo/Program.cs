@@ -13,6 +13,12 @@ using System.Threading.Tasks;
 using Kurukuru;
 using Microsoft.Extensions.Configuration;
 using Mono.Terminal;
+using Gizmo.Commands;
+using Gizmo.Configuration;
+using System.CommandLine.Builder;
+using System.CommandLine.Invocation;
+using System.CommandLine;
+using System.CommandLine.Rendering;
 
 namespace Gizmo
 {
@@ -50,9 +56,9 @@ namespace Gizmo
                 //https://stackoverflow.com/questions/3769770/clear-console-buffer
             });
         }
-        
+
         private static CancellationTokenSource cts;
-        
+
         private static void HandleCancelKeyPress(object s, ConsoleCancelEventArgs e)
         {
             Console.WriteLine("Cancel Pressed.");
@@ -64,56 +70,53 @@ namespace Gizmo
             }
         }
 
+        private static bool Debug { get; set; }
         // static async Task Main(string[] args)
         // {
-            // System.Console.OutputEncoding = System.Text.Encoding.UTF8;
-        static async Task Main(bool debug = false)
+        // System.Console.OutputEncoding = System.Text.Encoding.UTF8;
+        static async Task Main(string[] args)
         {
-            // Console.WriteLine($"The value for --int-option is: {intOption}");
-            // Console.WriteLine($"The value for --bool-option is: {boolOption}");
-            // Console.WriteLine($"The value for --file-option is: {fileOption?.FullName ?? "null"}");
-
-
-            bool connected = false;
-
             _builder = GetConfig();
+            var settings = new AppSettings();
+
+            _builder.Bind(settings);
+
+            var _commands = new GizmoCommands(settings);
+
+            var parser = new CommandLineBuilder()
+                .AddCommand(_commands.Connection())
+                .AddCommand(_commands.Interactive())
+                //.UseDefaults()
+
+                // middleware
+                .AddVersionOption()
+                .UseParseDirective()
+                .UseDebugDirective()
+                .UseSuggestDirective()
+                .RegisterWithDotnetSuggest()
+                .UseParseErrorReporting()
+                .UseExceptionHandler()
+                .UseTypoCorrections()
+                .UseHelp()
+
+                .UseAnsiTerminalWhenAvailable()
+
+                .Build();
+
+
+            var parsedArgs = parser.Parse(args);
+            Debug = parsedArgs.Directives.Contains("debug");
+
+            await parser.InvokeAsync(parsedArgs);
+
+        }
+
+        public static async Task DoREPL(string connectionName)
+        {
+
             Console.CancelKeyPress += HandleCancelKeyPress;
 
-            using (cts = new CancellationTokenSource())
-            {
-                await Spinner.StartAsync("Starting Gizmo", async spinner =>
-                {
-                    if(debug)
-                    {
-                        spinner.Text = "Press a key or attatch debugger.";
-                        await Task.WhenAny(
-                            Task.Delay(5000, cts.Token),
-                            GetKeypress()
-                        );
-                    }
-
-                    spinner.Text = $"Connecting with {nameof(AzureGraphsExecutor)}...";
-                    try
-                    {
-                        await Task.Run(async () =>
-                        {
-                            var config = new AppSettings();
-
-                            _builder.Bind(config);
-
-                            currentExecutor = await AzureGraphsExecutor.GetExecutor(config.CosmosDbConnections["default"], cts.Token);
-                            spinner.Text = "Testing Connection.";
-                            connected = await currentExecutor.TestConnection(cts.Token);
-                        }, cts.Token);
-                    }
-                    catch (TaskCanceledException)
-                    {
-                        //intentionally blank.
-                        Console.WriteLine("Task Cancelled 1...");
-                    }
-                });
-            }
-
+            bool connected = await TestConnection(connectionName);
 
             if (connected)
             {
@@ -121,7 +124,7 @@ namespace Gizmo
                 Console.WriteLine(currentExecutor.RemoteMessage);
                 Console.WriteLine();
 
-                
+
                 while (!Console.IsInputRedirected && Console.KeyAvailable)
                 {
                     Console.ReadKey(false);
@@ -129,7 +132,7 @@ namespace Gizmo
 
                 try
                 {
-                    await DoREPL();
+                    await DoREPLLoop();
                 }
 
                 catch (Exception ex)
@@ -142,16 +145,18 @@ namespace Gizmo
                     currentExecutor.Dispose();
                 }
             }
+
         }
-        
-        private static async Task DoREPL()
+
+        private static async Task DoREPLLoop()
         {
+
             var lineEditor = new LineEditor("Gizmo");
             // ReadLine.HistoryEnabled = true;
 
             string input;
             // while ((input = ReadLine.Read(prompt)) != ":q")
-            while ((input = lineEditor.Edit(prompt, initial: null)) != ":q")
+            while ((input = lineEditor.Edit(prompt, initial: null)).IsNotQuit())
             {
                 working = true;
 
@@ -200,7 +205,7 @@ namespace Gizmo
                         });
                     }
                 }
-                else 
+                else
                 {
                     //remove all blank lines
                     // var history = ReadLine.GetHistory().Where(h => !string.IsNullOrWhiteSpace(h));
@@ -212,6 +217,46 @@ namespace Gizmo
                 }
                 working = false;
             }
+        }
+
+        private static async Task<bool> TestConnection(string connectionName)
+        {
+            bool connected = false;
+            using (cts = new CancellationTokenSource())
+            {
+                await Spinner.StartAsync("Starting Gizmo", async spinner =>
+                {
+                    // if (Program.Debug)
+                    // {
+                    //     spinner.Text = "Press a key or attatch debugger.";
+                    //     await Task.WhenAny(
+                    //         Task.Delay(5000, cts.Token),
+                    //         GetKeypress()
+                    //     );
+                    // }
+
+                    spinner.Text = $"Connecting with {nameof(AzureGraphsExecutor)}...";
+                    try
+                    {
+                        await Task.Run(async () =>
+                        {
+                            var config = new AppSettings();
+
+                            _builder.Bind(config);
+
+                            currentExecutor = await AzureGraphsExecutor.GetExecutor(config.CosmosDbConnections[connectionName], cts.Token);
+                            spinner.Text = "Testing Connection.";
+                            connected = await currentExecutor.TestConnection(cts.Token);
+                        }, cts.Token);
+                    }
+                    catch (TaskCanceledException)
+                    {
+                        //intentionally blank.
+                    }
+                });
+            }
+
+            return connected;
         }
 
         ///<summary>

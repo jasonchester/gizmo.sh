@@ -11,7 +11,7 @@ using Microsoft.Azure.Documents.Client;
 using Microsoft.Azure.Graphs;
 using Microsoft.Extensions.Configuration;
 using Newtonsoft.Json;
-
+using Gizmo.Configuration;
 namespace Gizmo
 {
     public class AzureGraphsExecutor : IQueryExecutor
