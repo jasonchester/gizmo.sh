@@ -12,6 +12,7 @@ using System.Threading;
 using System.Threading.Tasks;
 using Kurukuru;
 using Microsoft.Extensions.Configuration;
+using Mono.Terminal;
 
 namespace Gizmo
 {
@@ -29,12 +30,12 @@ namespace Gizmo
 
         private static bool working = false;
 
-        private static IConfigurationRoot GetConfig(string[] args)
+        private static IConfigurationRoot GetConfig()
         {
             return new ConfigurationBuilder()
                 .AddJsonFile("appsettings.json")
                 .AddUserSecrets<Program>()
-                .AddCommandLine(args)
+                // .AddCommandLine(args)
                 .Build();
         }
 
@@ -62,26 +63,36 @@ namespace Gizmo
                 Console.WriteLine("Cancelling Tasks.");
             }
         }
-        
-        static async Task Main(string[] args)
+
+        // static async Task Main(string[] args)
+        // {
+            // System.Console.OutputEncoding = System.Text.Encoding.UTF8;
+        static async Task Main(bool debug = false)
         {
-            System.Console.OutputEncoding = System.Text.Encoding.UTF8;
+            // Console.WriteLine($"The value for --int-option is: {intOption}");
+            // Console.WriteLine($"The value for --bool-option is: {boolOption}");
+            // Console.WriteLine($"The value for --file-option is: {fileOption?.FullName ?? "null"}");
+
 
             bool connected = false;
 
-            _builder = GetConfig(args);
+            _builder = GetConfig();
             Console.CancelKeyPress += HandleCancelKeyPress;
 
             using (cts = new CancellationTokenSource())
             {
-                await Spinner.StartAsync("Press a key or attatch debugger.", async spinner =>
+                await Spinner.StartAsync("Starting Gizmo", async spinner =>
                 {
-                    await Task.WhenAny(
-                        Task.Delay(5000, cts.Token),
-                        GetKeypress()
-                    );
-                    spinner.Text = $"Connecting with {nameof(AzureGraphsExecutor)}...";
+                    if(debug)
+                    {
+                        spinner.Text = "Press a key or attatch debugger.";
+                        await Task.WhenAny(
+                            Task.Delay(5000, cts.Token),
+                            GetKeypress()
+                        );
+                    }
 
+                    spinner.Text = $"Connecting with {nameof(AzureGraphsExecutor)}...";
                     try
                     {
                         await Task.Run(async () =>
@@ -135,10 +146,12 @@ namespace Gizmo
         
         private static async Task DoREPL()
         {
-            ReadLine.HistoryEnabled = true;
+            var lineEditor = new LineEditor("Gizmo");
+            // ReadLine.HistoryEnabled = true;
 
             string input;
-            while ((input = ReadLine.Read(prompt)).IsNotQuit())
+            // while ((input = ReadLine.Read(prompt)) != ":q")
+            while ((input = lineEditor.Edit(prompt, initial: null)) != ":q")
             {
                 working = true;
 
@@ -190,12 +203,12 @@ namespace Gizmo
                 else 
                 {
                     //remove all blank lines
-                    var history = ReadLine.GetHistory().Where(h => !string.IsNullOrWhiteSpace(h));
-                    ReadLine.ClearHistory();
-                    foreach(var h in history) 
-                    {
-                        ReadLine.AddHistory(h);
-                    }
+                    // var history = ReadLine.GetHistory().Where(h => !string.IsNullOrWhiteSpace(h));
+                    // ReadLine.ClearHistory();
+                    // foreach(var h in history) 
+                    // {
+                    //     ReadLine.AddHistory(h);
+                    // }
                 }
                 working = false;
             }
