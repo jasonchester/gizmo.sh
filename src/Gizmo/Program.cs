@@ -402,7 +402,7 @@ namespace Gizmo
                     }
                     var count = Interlocked.Increment(ref globalCount);
                     var output2 = $"{count + skip,6}: {line}";
-                    spinner.Text = output2.Substring(0, Math.Min(Console.BufferWidth, output2.Length) - 2).PadRight(Console.BufferWidth - 2, ' ');
+                    spinner.Text = output2.Truncate(Console.WindowWidth - 3, "...");
                     var result = await currentExecutor.ExecuteQuery<dynamic>(line, ct);
                     using (var reader = new StringReader(result.ToString()))
                     {
@@ -433,8 +433,17 @@ namespace Gizmo
 
         private static void ConsoleWrite(string output)
         {
-            Console.CursorLeft = 0;
-            Console.WriteLine(output.Substring(0, Math.Min(Console.BufferWidth, output.Length)).PadRight(Console.BufferWidth, ' '));
+            ConsoleClearline();
+
+            Console.WriteLine(output.Truncate(Console.WindowWidth-1, "..."));
+        }
+
+        private static void ConsoleClearline()
+        {
+            int currentLineCursor = Console.CursorTop;
+            Console.SetCursorPosition(0, Console.CursorTop);
+            Console.Write(new string(' ', Console.WindowWidth));
+            Console.SetCursorPosition(0, currentLineCursor);
         }
 
         private static async Task<string> SwitchQueryExecutor(CancellationToken ct = default(CancellationToken))
@@ -448,16 +457,16 @@ namespace Gizmo
                 switch (currentExecutor)
                 {
                     case GremlinExecutor e:
-                        newExec = await AzureGraphsExecutor.GetExecutor(settings.CosmosDbConnections["default"], ct);
+                        newExec = await AzureGraphsExecutor.GetExecutor(settings.CosmosDbConnections.First().Value, ct);
                         break;
                     case AzureGraphsExecutor e:
-                        newExec = new GremlinExecutor(settings.CosmosDbConnections["default"]);
+                        newExec = new GremlinExecutor(settings.CosmosDbConnections.First().Value);
                         break;
                 }
             }
             catch (Exception ex)
             {
-                return $"failed to switch. {ex.Message}";
+                throw new ApplicationException("Failed to switch executors.", ex);
             }
             if (await newExec.TestConnection(ct))
             {

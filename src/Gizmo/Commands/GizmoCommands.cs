@@ -3,6 +3,8 @@ using System.CommandLine;
 using System.CommandLine.Builder;
 using System.CommandLine.Invocation;
 using System.IO;
+using System.Linq;
+using System.Threading.Tasks;
 using Gizmo.Configuration;
 using Microsoft.Extensions.Configuration;
 
@@ -12,9 +14,12 @@ namespace Gizmo.Commands
     {
 
         private readonly AppSettings _settings;
+        private readonly ConnectionCommands _connectionCommands;
         public GizmoCommands(AppSettings settings)
         {
             _settings = settings;
+            _connectionCommands = new ConnectionCommands(settings);
+
         }
 
         internal Command Interactive()
@@ -29,10 +34,17 @@ namespace Gizmo.Commands
             );
         }
 
-        private static Argument<string> ConnectionNameArgument()
+        private Argument<string> ConnectionNameArgument()
         {
-            var argument = new Argument<string>();
-            argument.SetDefaultValue("default");
+            var argument = new Argument<string>("name")
+            {
+                Arity = ArgumentArity.ExactlyOne
+            };
+
+            string[] connectionNames = _settings.CosmosDbConnections.Keys.ToArray();
+            argument.FromAmong(connectionNames);
+            argument.WithSuggestions(connectionNames);
+            argument.SetDefaultValue(_settings.CosmosDbConnections.Keys.First());
             return argument;
         }
 
@@ -48,49 +60,64 @@ namespace Gizmo.Commands
 
             Command List() =>
                 new Command("list", "List connections",
-                    // new Option[]
-                    // {
-                    //     // Global(),
-                    //     // ToolPath()
-                    // },
-                    handler: CommandHandler.Create(
-                        async () => {
-                            Console.WriteLine("List");
-                            foreach(var c in _settings.CosmosDbConnections.Keys)
-                            {
-                                Console.WriteLine($"{c}: {_settings.CosmosDbConnections[c].DocumentEndpoint}");
-                            }
-                        }
-
-                    )
+                    handler: CommandHandler.Create(_connectionCommands.ListConnections)
                 );
 
             Command Remove() =>
                 new Command("remove", "Remove connection",
-                    new Option[]
-                    {
-                        new Option(new [] { "--name", "-n"}, "Name of the connection",  new Argument<string>())
-                        // Global(),
-                        // ToolPath()
-                    },
-                    handler: CommandHandler.Create(
-                        async () => Console.WriteLine("Remove")
-                    ),
-                    argument: new Argument<string>()
+                    //new Option[] { },
+                    handler: CommandHandler.Create<string[]> (_connectionCommands.RemoveConnection),
+                    //argument: ConnectionNameArgument()
+                    argument: new Argument<string[]>() {
+                        Name = "connectionNames",
+                        Arity = ArgumentArity.OneOrMore
+                    }
+                    .FromAmong(_settings.CosmosDbConnections.Keys.ToArray())
                 );
 
-            Command Add() =>
-                new Command("add", "Add connection",
-                    // new Option[]
-                    // {
-                    //     // Global(),
-                    //     // ToolPath()
-                    // },
-                    handler: CommandHandler.Create(
-                        async () => Console.WriteLine("Add")
-                    )
-                );
+            Command Add()
+            {
+                var cmd = new Command("add", "Add a Connection");
+                cmd.ConfigureFromMethod(typeof(ConnectionCommands).GetMethod(nameof(ConnectionCommands.AddConnection)), _connectionCommands);
+                return cmd;
+            }
+
+            //Command Add() =>
+            //    new Command("add", "Add connection",
+            //        handler: CommandHandler.Create<string, CosmosDbConnection>(_connectionCommands.AddConnection)
+            //    );
             
+        }
+    }
+
+    public class ConnectionCommands
+    {
+        private readonly AppSettings _settings;
+        public ConnectionCommands(AppSettings settings)
+        {
+            _settings = settings;
+
+        }
+
+        public int RemoveConnection(string[] connectionNames)
+        {
+            foreach(var connectionName in connectionNames)
+            {
+                Console.WriteLine($"Removing {connectionName}");
+            }
+
+            return 0;
+        }
+
+        public void AddConnection(string connectionName, CosmosDbConnection connection) => Console.WriteLine($"Adding {connectionName}");
+
+        public void ListConnections()
+        {
+            Console.WriteLine("List");
+            foreach (var c in _settings.CosmosDbConnections.Keys)
+            {
+                Console.WriteLine($"{c}: {_settings.CosmosDbConnections[c].DocumentEndpoint}");
+            }
         }
     }
 }
