@@ -25,7 +25,6 @@
     <PackageReference Include="Microsoft.Extensions.Configuration.UserSecrets" Version="2.2.0" />
     <PackageReference Include="Microsoft.Extensions.Configuration.CommandLine" Version="2.2.0" />
     <PackageReference Include="Microsoft.Extensions.Options" Version="2.2.0" />
-    <PackageReference Include="Mono.Terminal" Version="5.4.0" />
     <PackageReference Include="Newtonsoft.Json" Version="12.0.1" />
     <PackageReference Include="System.CommandLine.Experimental" Version="0.1.0-alpha-63724-02" />
     <PackageReference Include="System.CommandLine.Rendering" Version="0.1.0-alpha-63724-02" />

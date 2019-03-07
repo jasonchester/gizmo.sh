@@ -151,7 +151,7 @@ namespace Gizmo
         private static async Task DoREPLLoop()
         {
 
-            var lineEditor = new LineEditor("Gizmo");
+            var lineEditor = new LineEditor("Gizmo",100);
             // ReadLine.HistoryEnabled = true;
 
             string input;
