@@ -41,7 +41,7 @@ namespace Gizmo
             _client.Dispose();
         }
 
-        public async Task<bool> TestConnection(CancellationToken ct = default(CancellationToken))
+        public async Task<bool> TestConnection(CancellationToken ct = default)
         {
             var connected = false;
             try
@@ -56,7 +56,7 @@ namespace Gizmo
             return connected;
         }
 
-        public async Task<QueryResultSet<T>> ExecuteQuery<T>(string query, CancellationToken ct = default(CancellationToken))
+        public async Task<QueryResultSet<T>> ExecuteQuery<T>(string query, CancellationToken ct = default)
         {
             var timer = new System.Diagnostics.Stopwatch();
             timer.Start();

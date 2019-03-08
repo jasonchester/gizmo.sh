@@ -1,8 +1,6 @@
 ﻿using Gizmo.Configuration;
 using Gizmo.Console;
 using Kurukuru;
-using Microsoft.Extensions.Configuration;
-using Mono.Terminal;
 using System;
 using System.Collections;
 using System.Collections.Async;
@@ -22,6 +20,9 @@ namespace Gizmo.Interactive
     public class GremlinConsole
     {
         private readonly IInteractiveConsole _console;
+        private readonly ConnectionManager _connection;
+        private IQueryExecutor _currentExecutor => _connection.CurrentQueryExecutor;
+
 
         const string prompt = "gremlin> ";
         const string startupMsg = @"
@@ -29,9 +30,9 @@ namespace Gizmo.Interactive
          (o o)
 -----oOOo-(3)-oOOo-----";
 
-        private IQueryExecutor _currentExecutor;
 
         private bool working = false;
+        private CancellationTokenSource cts;
 
         private readonly AppSettings _settings;
         private string _connectionName;
@@ -41,8 +42,9 @@ namespace Gizmo.Interactive
             _settings = settings;
             _console = console;
             _connectionName = connectionName;
-        }
 
+            _connection = new ConnectionManager(_settings, _console);
+        }
 
         public async Task DoREPL()
         {
@@ -69,7 +71,7 @@ namespace Gizmo.Interactive
                 finally
                 {
                     _console.WriteLine("Quitting.");
-                    _currentExecutor.Dispose();
+                    _connection.Dispose();
                 }
             }
 
@@ -77,13 +79,8 @@ namespace Gizmo.Interactive
 
         private async Task DoREPLLoop()
         {
-
-            var lineEditor = new LineEditor("Gizmo", 100);
-            // ReadLine.HistoryEnabled = true;
-
             string input;
-            // while ((input = ReadLine.Read(prompt)) != ":q")
-            while ((input = lineEditor.Edit(prompt, initial: null)).IsNotQuit())
+            while ((input = _console.Edit(prompt)).IsNotQuit())
             {
                 working = true;
 
@@ -91,7 +88,7 @@ namespace Gizmo.Interactive
                 {
                     using (cts = new CancellationTokenSource())
                     {
-                        var inputSubstring = input.Truncate(_console.BufferWidth -2, ellipsis: "...");//.PadRight(Console.BufferWidth - 2, ' ');
+                        var inputSubstring = input.Truncate(_console.BufferWidth - 3, ellipsis: "...");
                         await Spinner.StartAsync(inputSubstring, async spinner =>
                         {
                             try
@@ -153,22 +150,12 @@ namespace Gizmo.Interactive
             {
                 await Spinner.StartAsync("Starting Gizmo", async spinner =>
                 {
-                    // if (Program.Debug)
-                    // {
-                    //     spinner.Text = "Press a key or attatch debugger.";
-                    //     await Task.WhenAny(
-                    //         Task.Delay(5000, cts.Token),
-                    //         GetKeypress()
-                    //     );
-                    // }
-
                     spinner.Text = $"Connecting with {nameof(AzureGraphsExecutor)}...";
                     try
                     {
                         await Task.Run(async () =>
                         {
-
-                            _currentExecutor = new AzureGraphsExecutor(_settings.CosmosDbConnections[connectionName], _console);
+                            await _connection.Open(connectionName, ConnectionManager.ConnectionType.AzureGraphs);
                             spinner.Text = "Testing Connection.";
                             connected = await _currentExecutor.TestConnection(cts.Token);
                         }, cts.Token);
@@ -189,7 +176,7 @@ namespace Gizmo.Interactive
         ///<param name="ct">Cancellation token to kill off threads if necessary </param>
         ///Processes user input for anything that's not a direct Gremlin query
         ///</summary>
-        private async Task<IOperationResult> DoCommand(string command, Spinner spinner = null, CancellationToken ct = default(CancellationToken))
+        private async Task<IOperationResult> DoCommand(string command, Spinner spinner = null, CancellationToken ct = default)
         {
             var args = command.Split(" ");
 
@@ -211,7 +198,7 @@ namespace Gizmo.Interactive
                     return new CommandResult("cleared");
                 case ":mode":
                 case ":m":
-                    return new CommandResult(await SwitchQueryExecutor(ct));
+                    return new CommandResult((await _connection.SwitchConnectionType(ct)).RemoteMessage);
                 case ":l":
                 case ":load":
                     return new CommandResult(await ProcessFile(spinner, args, ct));
@@ -227,7 +214,7 @@ namespace Gizmo.Interactive
         ///Loads in a file containing the names of any other numeber of filenames in the same directory (or subdirectory) and loads them in to Gremlin
         ///Args should be as follows: :b filename numThreads
         ///</summary>
-        private async Task<string> ProcessBulkFile(Spinner spinner, string[] args, CancellationToken ct = default(CancellationToken))
+        private async Task<string> ProcessBulkFile(Spinner spinner, string[] args, CancellationToken ct = default)
         {
             if (!File.Exists(args[1]))
             {
@@ -280,7 +267,7 @@ namespace Gizmo.Interactive
         /// <param name="args"> filename startOffset endOffset numberOfThreads </param>
         /// <param name="ct"> A CancellationToken to inform all threads to kill themselves if necessary </param>
         /// </summary> 
-        private async Task<string> ProcessFile(Spinner spinner, string[] args, CancellationToken ct = default(CancellationToken))
+        private async Task<string> ProcessFile(Spinner spinner, string[] args, CancellationToken ct = default)
         {
 
             long globalCount = 0;
@@ -306,7 +293,7 @@ namespace Gizmo.Interactive
             }
 
             int dop = 1;
-            int.TryParse(args[4], out dop);
+            if (args.Length > 4) int.TryParse(args[4], out dop);
 
             var lines = queries.ToList();
             int totalQueries = lines.Count();
@@ -314,37 +301,37 @@ namespace Gizmo.Interactive
             var failedQueue = new ConcurrentQueue<String>();
 
             await lines.ParallelForEachAsync(async rawline =>
-            {
-                string line;
-                if (rawline.StartsWith(":>"))
                 {
-                    line = rawline.Substring(2).Trim();
-                }
-                else
-                {
-                    line = rawline;
-                }
-                var count = Interlocked.Increment(ref globalCount);
-                var output2 = $"{count + skip,6}: {line}";
-                spinner.Text = output2.Truncate(_console.BufferWidth - 3, "...");
-                var result = await _currentExecutor.ExecuteQuery<dynamic>(line, ct);
-                using (var reader = new StringReader(result.ToString()))
-                {
-                    var message = reader.ReadLine();
-                    var resultRegex = new Regex(@"(\d+)( characters)");
-                    var matches = resultRegex.Match(message);
-                    var r = -1;
-                    if (Int32.TryParse(matches.Groups[1].Value, out r))
+                    string line;
+                    if (rawline.StartsWith(":>"))
                     {
-                        if (r == 0)
-                        {
-                            failedQueue.Enqueue(message);
-                        }
+                        line = rawline.Substring(2).Trim();
                     }
-                    var output = $"{count + skip,8}: [{(double)count / totalQueries * 100:000.0}%] {((double)count) / timer.Elapsed.TotalSeconds:F2} q/s: {message}";
-                    ConsoleWrite(output);
-                }
-            },
+                    else
+                    {
+                        line = rawline;
+                    }
+                    var count = Interlocked.Increment(ref globalCount);
+                    var output2 = $"{count + skip,6}: {line}";
+                    spinner.Text = output2.Truncate(_console.BufferWidth - 3, "...");
+                    var result = await _currentExecutor.ExecuteQuery<dynamic>(line, ct);
+                    using (var reader = new StringReader(result.ToString()))
+                    {
+                        var message = reader.ReadLine();
+                        var resultRegex = new Regex(@"(\d+)( characters)");
+                        var matches = resultRegex.Match(message);
+                        var r = -1;
+                        if (Int32.TryParse(matches.Groups[1].Value, out r))
+                        {
+                            if (r == 0)
+                            {
+                                failedQueue.Enqueue(message);
+                            }
+                        }
+                        var output = $"{count + skip,8}: [{(double)count / totalQueries * 100:000.0}%] {((double)count) / timer.Elapsed.TotalSeconds:F2} q/s: {message}";
+                        ConsoleWrite(output);
+                    }
+                },
                 maxDegreeOfParalellism: dop,
                 cancellationToken: ct
             );
@@ -361,36 +348,6 @@ namespace Gizmo.Interactive
 
             _console.WriteLine(output.Truncate(_console.BufferWidth - 1, "..."));
         }
-
-        private async Task<string> SwitchQueryExecutor(CancellationToken ct = default(CancellationToken))
-        {
-            IQueryExecutor newExec = null;
-            try
-            {
-                switch (_currentExecutor)
-                {
-                    case GremlinExecutor e:
-                        newExec = new AzureGraphsExecutor(_settings.CosmosDbConnections[_connectionName], _console);
-                        break;
-                    case AzureGraphsExecutor e:
-                        newExec = new GremlinExecutor(_settings.CosmosDbConnections[_connectionName], _console);
-                        break;
-                }
-            }
-            catch (Exception ex)
-            {
-                throw new ApplicationException("Failed to switch executors.", ex);
-            }
-            if (await newExec?.TestConnection(ct))
-            {
-                _currentExecutor.Dispose();
-                _currentExecutor = newExec;
-                return _currentExecutor.RemoteMessage;
-            }
-            throw new ApplicationException("Failed to switch executors.");
-        }
-
-        private CancellationTokenSource cts;
 
         private void HandleCancelKeyPress(object s, ConsoleCancelEventArgs e)
         {

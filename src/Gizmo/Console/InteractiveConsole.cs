@@ -1,27 +1,15 @@
 ﻿using System;
-using System.Collections.Generic;
 using System.CommandLine;
-using System.Text;
 using System.Threading;
 using System.Threading.Tasks;
-using Kurukuru;
 using Mono.Terminal;
 
 namespace Gizmo.Console
 {
-    public interface IInteractiveConsole : IConsole, IHandleCancel, IReadLine
-    {
-        void EmptyKeyBuffer();
-        void ClearLine();
-        void Clear();
-        int BufferWidth { get; }
-        int BufferHeight { get; }
-    }
-
     public class InteractiveConsole : IInteractiveConsole
     {
-
         private readonly LineEditor _lineEditor;
+
         public InteractiveConsole(string appName = "gizmo", int histSize = 100)
         {
             Error = StandardStreamWriter.Create(System.Console.Error);
@@ -68,12 +56,12 @@ namespace Gizmo.Console
                 {
                     Thread.Sleep(10);
                 }
-                //https://stackoverflow.com/questions/3769770/clear-console-buffer
             });
         }
 
         public void ClearLine()
         {
+            //https://stackoverflow.com/questions/3769770/clear-console-buffer
             int currentLineCursor = System.Console.CursorTop;
             System.Console.SetCursorPosition(0, System.Console.CursorTop);
             System.Console.Write(new string(' ', System.Console.WindowWidth));
@@ -81,24 +69,5 @@ namespace Gizmo.Console
         }
 
         public void Clear() => System.Console.Clear();
-    }
-
-    public interface IHandleCancel
-    {
-        Task WaitForAnyKey();
-
-        event ConsoleCancelEventHandler CancelKeyPress;
-    }
-
-    public interface IReadLine
-    {
-        string Edit(string prompt, string initial = null);
-    }
-
-    public static class InteractiveConsoleExtensions
-    {
-        public static void WriteLine(this IConsole console, object value)  => console.Out.WriteLine(value.ToString());
-
-        public static void WriteLine(this IConsole console) => console.Out.WriteLine();
     }
 }
