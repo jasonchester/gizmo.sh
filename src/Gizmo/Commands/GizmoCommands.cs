@@ -6,6 +6,8 @@ using System.IO;
 using System.Linq;
 using System.Threading.Tasks;
 using Gizmo.Configuration;
+using Gizmo.Console;
+using Gizmo.Interactive;
 using Microsoft.Extensions.Configuration;
 
 namespace Gizmo.Commands
@@ -14,12 +16,14 @@ namespace Gizmo.Commands
     {
 
         private readonly AppSettings _settings;
+        private readonly IInteractiveConsole _console;
         private readonly ConnectionCommands _connectionCommands;
-        public GizmoCommands(AppSettings settings)
+
+        public GizmoCommands(AppSettings settings, IInteractiveConsole console)
         {
             _settings = settings;
-            _connectionCommands = new ConnectionCommands(settings);
-
+            _console = console;
+            _connectionCommands = new ConnectionCommands(settings, console);
         }
 
         internal Command Interactive()
@@ -30,7 +34,7 @@ namespace Gizmo.Commands
                     new Option(new [] { "--connection-name", "-c"}, "Name of the connection",  ConnectionNameArgument())
                     // ToolPath()
                 },
-                handler: CommandHandler.Create<string>(Program.DoREPL)
+                handler: CommandHandler.Create<string>(async (connectionName) => { await new GremlinConsole(_settings, _console, connectionName).DoREPL(); })
             );
         }
 
@@ -93,30 +97,31 @@ namespace Gizmo.Commands
     public class ConnectionCommands
     {
         private readonly AppSettings _settings;
-        public ConnectionCommands(AppSettings settings)
+        private readonly IConsole _console;
+        public ConnectionCommands(AppSettings settings, IConsole console)
         {
             _settings = settings;
-
+            _console = console;
         }
 
         public int RemoveConnection(string[] connectionNames)
         {
             foreach(var connectionName in connectionNames)
             {
-                Console.WriteLine($"Removing {connectionName}");
+                _console.WriteLine($"Removing {connectionName}");
             }
 
             return 0;
         }
 
-        public void AddConnection(string connectionName, CosmosDbConnection connection) => Console.WriteLine($"Adding {connectionName}");
+        public void AddConnection(string connectionName, CosmosDbConnection connection) => _console.WriteLine($"Adding {connectionName}");
 
         public void ListConnections()
         {
-            Console.WriteLine("List");
+            _console.WriteLine("List");
             foreach (var c in _settings.CosmosDbConnections.Keys)
             {
-                Console.WriteLine($"{c}: {_settings.CosmosDbConnections[c].DocumentEndpoint}");
+                _console.WriteLine($"{c}: {_settings.CosmosDbConnections[c].DocumentEndpoint}");
             }
         }
     }

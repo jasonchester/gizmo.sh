@@ -1,9 +1,11 @@
 using System;
+using System.CommandLine;
 using System.Text;
 using System.Threading;
 using System.Threading.Tasks;
 using Gizmo;
 using Gizmo.Configuration;
+using Gizmo.Console;
 using Gremlin.Net.Driver;
 using Gremlin.Net.Structure.IO.GraphSON;
 using Microsoft.Extensions.Configuration;
@@ -13,20 +15,23 @@ namespace Gizmo
 {
     public class GremlinExecutor : IQueryExecutor
     {
+        private readonly IConsole _console;
+
         private readonly GremlinClient _client;
         private readonly GremlinServer _server;
 
         private readonly string _partitionKey;
         public string RemoteMessage => $"gremlin: {_server.Username}@{_server.Uri}";
 
-        public GremlinExecutor(GremlinServer server, CosmosDbConnection config)
+        public GremlinExecutor(GremlinServer server, CosmosDbConnection config, IConsole console)
         {
+            _console = console;
             _server = server;
             _partitionKey = config.PartitionKey;
             _client = new GremlinClient(_server, new GraphSON2Reader(), new GraphSON2Writer(), GremlinClient.GraphSON2MimeType);
         }
 
-        public GremlinExecutor(CosmosDbConnection config) : this(GremlinExecutor.GetGremlinServer(config), config)
+        public GremlinExecutor(CosmosDbConnection config, IConsole console) : this(GremlinExecutor.GetGremlinServer(config), config, console)
         {
             //intentionally blank
         }
@@ -45,8 +50,8 @@ namespace Gizmo
             }
             catch (Exception ex)
             {
-                Console.WriteLine("Unable to connect to gremlin server. Please check you appsettings.json");
-                Console.WriteLine(ex);
+                _console.WriteLine("Unable to connect to gremlin server. Please check you appsettings.json");
+                _console.WriteLine(ex);
             }
             return connected;
         }

@@ -12,19 +12,28 @@ using Microsoft.Azure.Graphs;
 using Microsoft.Extensions.Configuration;
 using Newtonsoft.Json;
 using Gizmo.Configuration;
+using Gizmo.Console;
+using System.CommandLine;
+
 namespace Gizmo
 {
     public class AzureGraphsExecutor : IQueryExecutor
     {
-        private readonly DocumentClient _client;
-        private readonly DocumentCollection _graph;
+
+        private readonly CosmosDbConnection _config;
+        private readonly IConsole _console;
+        //private readonly string _connectionName;
+
+        private DocumentClient _client;
+        private DocumentCollection _graph;
 
         public string RemoteMessage => $"cosmos: {_graph.AltLink}@{_client.ServiceEndpoint}";
 
-        public AzureGraphsExecutor(DocumentClient client, DocumentCollection graph)
+        public AzureGraphsExecutor(CosmosDbConnection config, IConsole console)
         {
-            _client = client;
-            _graph = graph;
+            _config = config;
+            _console = console;
+            //_connectionName = connectionName;
         }
 
         public async Task<bool> TestConnection(CancellationToken ct = default(CancellationToken))
@@ -42,8 +51,8 @@ namespace Gizmo
             }
             catch (Exception ex)
             {
-                Console.WriteLine("Unable to connect to gremlin server. Please check you appsettings.json");
-                Console.WriteLine(ex);
+                _console.WriteLine("Unable to connect to gremlin server. Please check you appsettings.json");
+                _console.WriteLine(ex);
             }
 
             return connected;
@@ -103,15 +112,16 @@ namespace Gizmo
             return graph;
         }
 
-        public static async Task<AzureGraphsExecutor> GetExecutor(CosmosDbConnection config, CancellationToken ct = default(CancellationToken))
-        {
-            DocumentClient client = AzureGraphsExecutor.GetDocumentClient(config);
-            var temp = new AzureGraphsExecutor(
-                client,
-                await AzureGraphsExecutor.GetDocumentCollection(client, config)
-            );
-            return temp;
-        }
+        //public static async Task<AzureGraphsExecutor> GetExecutor(CosmosDbConnection config, IConsole console, CancellationToken ct = default(CancellationToken))
+        //{
+        //    DocumentClient client = AzureGraphsExecutor.GetDocumentClient(config);
+        //    var temp = new AzureGraphsExecutor(
+        //        client,
+        //        await AzureGraphsExecutor.GetDocumentCollection(client, config, ct),
+        //        console
+        //    );
+        //    return temp;
+        //}
         private class FeedResponseAggregator<T>
         {
             private readonly string _query;
