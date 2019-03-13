@@ -4,6 +4,7 @@ using Gizmo.Interactive;
 using System.CommandLine;
 using System.CommandLine.Builder;
 using System.CommandLine.Invocation;
+using System.IO;
 using System.Linq;
 using static Gizmo.ConnectionManager;
 
@@ -22,7 +23,16 @@ namespace Gizmo.Commands
             _connectionCommands = new ConnectionCommands(settings, console);
         }
 
-        public RootCommand Root() => new RootCommand();
+        public RootCommand Root() => new RootCommand(
+            // symbols: new Option[]
+            // {
+            //     ConnectionNameOption(),
+            //     QueryExecutorOption()
+            // },
+            // handler: CommandHandler.Create<string, ConnectionType>(
+            //     async (connectionName, connectionType) =>
+            //     await new GremlinConsole(_settings, _console).DoREPL(connectionName, connectionType))
+        );
 
         public Command Connection()
         {
@@ -77,7 +87,39 @@ namespace Gizmo.Commands
             argument: new Argument<string>() { Name = "query", Description = "The query to execute" },
             handler: CommandHandler.Create<string, string, ConnectionType>(
                 async (query, connectionName, queryExecutor) =>
-                await new ExecuteCommands(_settings, _console).ExecuteQuery(query, connectionName, queryExecutor))
+                await new ExecuteCommands(_settings, _console).ExecuteQuery(query, connectionName, queryExecutor)
+            )
+        );
+
+        public Command LoadFile() => new Command("load", "Process a file of queries",
+            new Option[] {
+                ConnectionNameOption(),
+                QueryExecutorOption(),
+                new Option("--skip", "lines to skip from the file", new Argument<int>(0)),
+                new Option("--take", "lines to take from the file", new Argument<int>(0)),
+                new Option("--parallel", "number of threads to use", new Argument<int>(1))
+            },
+            argument: new Argument<FileInfo[]>() {
+                Name = "queries", 
+                Description = "File containing queries to execute",
+                Arity = ArgumentArity.OneOrMore
+            }.ExistingOnly(),
+            // handler: CommandHandler.Create<ParseResult>( p => 
+            //     _console.WriteLine(p.Diagram())
+            // )            
+            handler: CommandHandler.Create<string, ConnectionManager.ConnectionType, int, int, int, ParseResult>( 
+                async (connectionName, connectionType, skip, take, parallel, parse) => 
+                await new ExecuteCommands(_settings, _console).LoadFile(parse.CommandResult.GetValueOrDefault<FileInfo[]>(), connectionName, connectionType, skip, take, parallel)
+            )
+            // handler: CommandHandler.Create<string, ConnectionManager.ConnectionType, int, int, int, FileInfo >( 
+            //     async (connectionName, connectionType, skip, take, parallel, queries) => 
+            //     await new ExecuteCommands(_settings, _console).LoadFile(queries, connectionName, connectionType, skip, take, parallel)
+            // )
+
+            // handler: CommandHandler.Create<FileInfo, string, ConnectionManager.ConnectionType, int, int, int >( 
+            //     async (file, connectionName, connectionType, skip, take, parallel) => 
+            //     await new ExecuteCommands(_settings, _console).LoadFile(file, connectionName, connectionType, skip, take, parallel)
+            // )
         );
 
         private Option ConnectionNameOption() => new Option(new[] { "--connection-name", "-c" }, "Name of the connection",
