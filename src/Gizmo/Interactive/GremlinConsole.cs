@@ -14,6 +14,7 @@ using System.Text;
 using System.Text.RegularExpressions;
 using System.Threading;
 using System.Threading.Tasks;
+using static Gizmo.ConnectionManager;
 
 namespace Gizmo.Interactive
 {
@@ -35,23 +36,21 @@ namespace Gizmo.Interactive
         private CancellationTokenSource cts;
 
         private readonly AppSettings _settings;
-        private string _connectionName;
 
-        public GremlinConsole(AppSettings settings, IInteractiveConsole console, string connectionName)
+        public GremlinConsole(AppSettings settings, IInteractiveConsole console)
         {
             _settings = settings;
             _console = console;
-            _connectionName = connectionName;
 
             _connection = new ConnectionManager(_settings, _console);
         }
 
-        public async Task DoREPL()
+        public async Task DoREPL(string connectionName, ConnectionType connectionType)
         {
 
             _console.CancelKeyPress += HandleCancelKeyPress;
 
-            bool connected = await TestConnection(_connectionName);
+            bool connected = await TestConnection(connectionName, connectionType);
 
             if (connected)
             {
@@ -143,19 +142,19 @@ namespace Gizmo.Interactive
             }
         }
 
-        private async Task<bool> TestConnection(string connectionName)
+        private async Task<bool> TestConnection(string connectionName, ConnectionType connectionType)
         {
             bool connected = false;
             using (cts = new CancellationTokenSource())
             {
                 await Spinner.StartAsync("Starting Gizmo", async spinner =>
                 {
-                    spinner.Text = $"Connecting with {nameof(AzureGraphsExecutor)}...";
+                    spinner.Text = $"Connecting with {connectionType}...";
                     try
                     {
                         await Task.Run(async () =>
                         {
-                            await _connection.Open(connectionName, ConnectionManager.ConnectionType.AzureGraphs);
+                            await _connection.Open(connectionName, connectionType, cts.Token);
                             spinner.Text = "Testing Connection.";
                             connected = await _currentExecutor.TestConnection(cts.Token);
                         }, cts.Token);
@@ -351,12 +350,12 @@ namespace Gizmo.Interactive
 
         private void HandleCancelKeyPress(object s, ConsoleCancelEventArgs e)
         {
-            System.Console.WriteLine("Cancel Pressed.");
+            _console.WriteLine("Cancel Pressed.");
             if (working && cts != null && !cts.IsCancellationRequested)
             {
                 cts.Cancel();
                 e.Cancel = true;
-                System.Console.WriteLine("Cancelling Tasks.");
+                _console.WriteLine("Cancelling Tasks.");
             }
         }
     }
