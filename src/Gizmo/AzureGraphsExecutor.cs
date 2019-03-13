@@ -9,26 +9,70 @@ using System.Threading.Tasks;
 using Microsoft.Azure.Documents;
 using Microsoft.Azure.Documents.Client;
 using Microsoft.Azure.Graphs;
-using Microsoft.Extensions.Configuration;
-using Newtonsoft.Json;
 using Gizmo.Configuration;
+using Gizmo.Console;
+using System.CommandLine;
+
 namespace Gizmo
 {
     public class AzureGraphsExecutor : IQueryExecutor
     {
-        private readonly DocumentClient _client;
-        private readonly DocumentCollection _graph;
+        private readonly CosmosDbConnection _config;
+        private readonly IConsole _console;
+
+        private DocumentClient _client;
+        private DocumentCollection _graph;
 
         public string RemoteMessage => $"cosmos: {_graph.AltLink}@{_client.ServiceEndpoint}";
 
-        public AzureGraphsExecutor(DocumentClient client, DocumentCollection graph)
+        public AzureGraphsExecutor(CosmosDbConnection config, IConsole console)
         {
-            _client = client;
-            _graph = graph;
+            _config = config;
+            _console = console;
         }
 
-        public async Task<bool> TestConnection(CancellationToken ct = default(CancellationToken))
+        public void Dispose()
         {
+            _client.Dispose();
+        }
+
+        private async Task Initilize(CancellationToken ct = default)
+        {
+            _client = _client ?? GetDocumentClient(_config);
+            _graph = _graph ?? await GetDocumentCollection(_client, _config);
+
+            DocumentClient GetDocumentClient(CosmosDbConnection config)
+            {
+                // connection issues on osx
+                // https://github.com/Azure/azure-documentdb-dotnet/issues/194
+                ConnectionPolicy connectionPolicy = new ConnectionPolicy();
+                if (RuntimeInformation.IsOSPlatform(OSPlatform.Windows))
+                {
+                    connectionPolicy.ConnectionMode = ConnectionMode.Direct;
+                    connectionPolicy.ConnectionProtocol = Protocol.Tcp;
+                }
+
+                var client = new DocumentClient(
+                    config.DocumentEndpoint,
+                    config.AuthKey,
+                    connectionPolicy);
+
+                return client;
+            }
+
+            async Task<DocumentCollection> GetDocumentCollection(DocumentClient client, CosmosDbConnection config)
+            {
+                var graph = await client.CreateDocumentCollectionIfNotExistsAsync(
+                    UriFactory.CreateDatabaseUri(config.DatabaseId),
+                    new DocumentCollection { Id = config.GraphId });
+                return graph;
+            }
+        }
+
+        public async Task<bool> TestConnection(CancellationToken ct = default)
+        {
+            await Initilize(ct);
+
             var connected = false;
             try
             {
@@ -42,20 +86,17 @@ namespace Gizmo
             }
             catch (Exception ex)
             {
-                Console.WriteLine("Unable to connect to gremlin server. Please check you appsettings.json");
-                Console.WriteLine(ex);
+                _console.WriteLine("Unable to connect to gremlin server. Please check you appsettings.json");
+                _console.WriteLine(ex);
             }
 
             return connected;
         }
 
-        public void Dispose()
-        {
-            _client.Dispose();
-        }
-
         public async Task<QueryResultSet<T>> ExecuteQuery<T>(string query, CancellationToken ct = default)
         {
+            await Initilize(ct);
+
             var timer = new System.Diagnostics.Stopwatch();
             timer.Start();
 
@@ -76,42 +117,6 @@ namespace Gizmo
             return results.ToQueryResultSet();
         }
 
-        private static DocumentClient GetDocumentClient(CosmosDbConnection config)
-        {
-            // connection issues on osx
-            // https://github.com/Azure/azure-documentdb-dotnet/issues/194
-            ConnectionPolicy connectionPolicy = new ConnectionPolicy();
-            if (RuntimeInformation.IsOSPlatform(OSPlatform.Windows))
-            {
-                connectionPolicy.ConnectionMode = ConnectionMode.Direct;
-                connectionPolicy.ConnectionProtocol = Protocol.Tcp;
-            }
-
-            var client = new DocumentClient(
-                config.DocumentEndpoint,
-                config.AuthKey,
-                connectionPolicy);
-
-            return client;
-        }
-
-        private static async Task<DocumentCollection> GetDocumentCollection(DocumentClient client, CosmosDbConnection config, CancellationToken ct = default(CancellationToken))
-        {
-            var graph = await client.CreateDocumentCollectionIfNotExistsAsync(
-                UriFactory.CreateDatabaseUri(config.DatabaseId),
-                new DocumentCollection { Id = config.GraphId });
-            return graph;
-        }
-
-        public static async Task<AzureGraphsExecutor> GetExecutor(CosmosDbConnection config, CancellationToken ct = default(CancellationToken))
-        {
-            DocumentClient client = AzureGraphsExecutor.GetDocumentClient(config);
-            var temp = new AzureGraphsExecutor(
-                client,
-                await AzureGraphsExecutor.GetDocumentCollection(client, config)
-            );
-            return temp;
-        }
         private class FeedResponseAggregator<T>
         {
             private readonly string _query;
