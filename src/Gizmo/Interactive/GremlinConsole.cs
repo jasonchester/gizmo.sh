@@ -35,9 +35,9 @@ namespace Gizmo.Interactive
         private bool working = false;
         private CancellationTokenSource cts;
 
-        private readonly AppSettings _settings;
+        private readonly GizmoConfig _settings;
 
-        public GremlinConsole(AppSettings settings, IInteractiveConsole console)
+        public GremlinConsole(GizmoConfig settings, IInteractiveConsole console)
         {
             _settings = settings;
             _console = console;

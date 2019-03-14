@@ -21,6 +21,7 @@ using System.CommandLine;
 using System.CommandLine.Rendering;
 using Gizmo.Console;
 using Autofac;
+using Microsoft.Extensions.Configuration.Json;
 
 namespace Gizmo
 {
@@ -67,11 +68,11 @@ namespace Gizmo
             containerBuilder.Register(c =>
             {
                 var builder = GetConfig();
-                var settings = new AppSettings();
+                var settings = new GizmoConfig();
                 builder.Bind(settings);
                 return settings;
-            }).As<AppSettings>();
-            
+            }).As<GizmoConfig>();
+
             containerBuilder.RegisterType<CommandDefinitions>().AsSelf();
             containerBuilder.RegisterType<ConnectionManager>().AsSelf().SingleInstance();
 
@@ -80,19 +81,42 @@ namespace Gizmo
         }
         private static IConfigurationRoot GetConfig()
         {
-            string profileConfig = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.UserProfile), ".gizmoconfig");
-            string localConfig = Path.Combine(Directory.GetCurrentDirectory(), ".gizmoconfig");
+            // System.Console.WriteLine("basepath: " + Path.GetDirectoryName(GizmoConfig.ProfileConfig));
+            // System.Console.WriteLine("profile: " + Path.GetFileName(GizmoConfig.LocalConfigPath));
+            System.Console.WriteLine($"Loding ProfileConfig from: {GizmoConfig.ProfileConfig}");
+            if (File.Exists(GizmoConfig.ProfileConfig))
+            {
+                System.Console.WriteLine(File.ReadAllText(GizmoConfig.ProfileConfig));
+            }
 
-            // System.Console.WriteLine(profileConfig);
-            // System.Console.WriteLine(localConfig);
+            System.Console.WriteLine($"Loding LocalConfig from: {GizmoConfig.LocalConfigPath}");
+            if (File.Exists(GizmoConfig.LocalConfigPath))
+            {
+                System.Console.WriteLine(File.ReadAllText(GizmoConfig.LocalConfigPath));
+            }
 
-            return new ConfigurationBuilder()
+
+            var builder = new ConfigurationBuilder()
                 .AddJsonFile("appsettings.json")
-                .AddJsonFile(profileConfig, optional: true)
-                .AddJsonFile(localConfig, optional: true)
-                .AddUserSecrets<Program>()
-                // .AddCommandLine(args)
-                .Build();
+                .AddJsonFile(GizmoConfig.ProfileConfig, optional: true)
+                .AddJsonFile(GizmoConfig.LocalConfigPath, optional: true);
+
+            // .AddConfiguration(new ConfigurationBuilder()
+            //     .SetBasePath(Path.GetDirectoryName(GizmoConfig.ProfileConfig))
+            //     .AddJsonFile(Path.GetFileName(GizmoConfig.ProfileConfig))
+            //     .Build()
+            // );
+
+            // builder
+
+            // builder.AddJsonFile()
+            // .AddJsonFile("appsettings.json")
+            // // .AddJsonFile(Path.GetRelativePath(AppContext.BaseDirectory, GizmoConfig.ProfileConfig))
+            // .AddJsonFile("../../../../../../../.gizmoconfig")
+            // .AddJsonFile(Path.GetRelativePath(AppContext.BaseDirectory, GizmoConfig.LocalConfigPath), optional: true)
+            // .AddUserSecrets<Program>()
+            // .AddCommandLine(args)
+            return builder.Build();
         }
     }
 }

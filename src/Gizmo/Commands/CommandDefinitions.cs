@@ -12,12 +12,12 @@ namespace Gizmo.Commands
 {
     public class CommandDefinitions
     {
-        private readonly AppSettings _settings;
+        private readonly GizmoConfig _settings;
         private readonly IInteractiveConsole _console;
         private readonly ConnectionCommands _connectionCommands;
         private readonly ConnectionManager _connectionManager;
 
-        public CommandDefinitions(AppSettings settings, IInteractiveConsole console, ConnectionManager connectionManager)
+        public CommandDefinitions(GizmoConfig settings, IInteractiveConsole console, ConnectionManager connectionManager)
         {
             _settings = settings;
             _console = console;
@@ -73,16 +73,17 @@ namespace Gizmo.Commands
 
             Command Add() => new Command("add", "Add a Connection",
                     new Option[] {
+                        new Option(new [] { "--global", "-g"}, "", new Argument<bool>(false)),
                         new Option(new [] { "--document-endpoint", "-c" }, "", new Argument<Uri>()),
-                        new Option(new [] { "--gremlin-endpoint", "-g" }, "", new Argument<string>()),
+                        new Option(new [] { "--gremlin-endpoint", "-t" }, "", new Argument<string>()),
                         new Option(new [] { "--gremlin-port", "-p" }, "", new Argument<int>(443)),
                         new Option(new [] { "--authkey", "-k" }, "", new Argument<string>()),
                         new Option(new [] { "--database", "-d" }, "", new Argument<string>()),
                         new Option(new [] { "--graph" }, "", new Argument<string>()),
                         new Option(new [] { "--partitionkey"}, "", new Argument<string>())
                     },
-                    argument: new Argument<string>(),
-                    handler: CommandHandler.Create<string, CosmosDbConnection>(_connectionCommands.AddConnection)
+                    argument: new Argument<string>() {Name = "connectionName", Arity = ArgumentArity.ExactlyOne},
+                    handler: CommandHandler.Create<string, CosmosDbConnection, bool>(_connectionCommands.AddConnection)
                 );
 
         }

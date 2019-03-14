@@ -17,7 +17,7 @@ namespace Gizmo.Test
         public CommandDefinitionTest()
         {
             var console = new InteractiveConsole();
-            var settings = new AppSettings();
+            var settings = new GizmoConfig();
             var connectionManager = new ConnectionManager(settings, console);
             definitions = new CommandDefinitions(settings, console, connectionManager);
         }

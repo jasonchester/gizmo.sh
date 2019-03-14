@@ -10,9 +10,9 @@ namespace Gizmo
     {
 
         private readonly IConsole _console;
-        private readonly AppSettings _settings;
+        private readonly GizmoConfig _settings;
 
-        public ConnectionManager(AppSettings settings, IConsole console)
+        public ConnectionManager(GizmoConfig settings, IConsole console)
         {
             _settings = settings;
             _console = console;
