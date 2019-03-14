@@ -8,11 +8,6 @@ namespace Gizmo
 {
     public class ConnectionManager : IDisposable
     {
-        public enum ConnectionType
-        {
-            GremlinNet,
-            AzureGraphs
-        }
 
         private readonly IConsole _console;
         private readonly AppSettings _settings;

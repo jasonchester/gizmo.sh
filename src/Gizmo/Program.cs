@@ -37,6 +37,7 @@ namespace Gizmo
                 .AddCommand(commands.Interactive())
                 .AddCommand(commands.Execute())
                 .AddCommand(commands.LoadFile())
+                .AddCommand(commands.BulkFile())
                 //.UseDefaults()
 
                 // middleware
@@ -58,7 +59,6 @@ namespace Gizmo
             var parsedArgs = parser.Parse(args);
             await parser.InvokeAsync(parsedArgs);
         }
-
         private static IContainer BuildContainer()
         {
             var containerBuilder = new ContainerBuilder();
@@ -71,15 +71,25 @@ namespace Gizmo
                 builder.Bind(settings);
                 return settings;
             }).As<AppSettings>();
+            
             containerBuilder.RegisterType<CommandDefinitions>().AsSelf();
+            containerBuilder.RegisterType<ConnectionManager>().AsSelf().SingleInstance();
+
             var container = containerBuilder.Build();
             return container;
         }
-
         private static IConfigurationRoot GetConfig()
         {
+            string profileConfig = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.UserProfile), ".gizmoconfig");
+            string localConfig = Path.Combine(Directory.GetCurrentDirectory(), ".gizmoconfig");
+
+            // System.Console.WriteLine(profileConfig);
+            // System.Console.WriteLine(localConfig);
+
             return new ConfigurationBuilder()
                 .AddJsonFile("appsettings.json")
+                .AddJsonFile(profileConfig, optional: true)
+                .AddJsonFile(localConfig, optional: true)
                 .AddUserSecrets<Program>()
                 // .AddCommandLine(args)
                 .Build();
