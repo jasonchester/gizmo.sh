@@ -25,16 +25,7 @@ namespace Gizmo.Commands
             _connectionCommands = new ConnectionCommands(settings, console);
         }
 
-        public RootCommand Root() => new RootCommand(
-        // symbols: new Option[]
-        // {
-        //     ConnectionNameOption(),
-        //     QueryExecutorOption()
-        // },
-        // handler: CommandHandler.Create<string, ConnectionType>(
-        //     async (connectionName, connectionType) =>
-        //     await new GremlinConsole(_settings, _console).DoREPL(connectionName, connectionType))
-        );
+        public RootCommand Root() => new RootCommand();
 
         public Command Connection()
         {
@@ -52,24 +43,18 @@ namespace Gizmo.Commands
                 );
 
             Command Show() => new Command("show", "Show connection details",
-                    //symbols: new[] { new Option("", argument: ConnectionNamesArgument()) },
                     argument: ConnectionNameArgument(),
                     handler: CommandHandler.Create<string>(_connectionCommands.ShowConnections)
                 );
 
             Command Remove() => new Command("remove", "Remove connection(s)",
-                    //symbols: new[] { new Option("", argument: ConnectionNamesArgument()) }, 
+                    new Option[] {
+                        GlobalOption()
+                    },
                     argument: ConnectionNameArgument(),
-                    handler: CommandHandler.Create<string>(_connectionCommands.RemoveConnection)
+                    handler: CommandHandler.Create<string, bool>(_connectionCommands.RemoveConnection)
                 );
 
-            // public Uri DocumentEndpoint { get; set; }
-            // public string GremlinEndpoint { get; set; }
-            // public int GremlinPort { get; set; } = 443;
-            // public string AuthKey { get; set; }
-            // public string DatabaseId { get; set; }
-            // public string GraphId { get; set; }
-            // public string PartitionKey { get; set; }
 
             Command Add() => new Command("add", "Add a Connection",
                     new Option[] {
@@ -82,11 +67,12 @@ namespace Gizmo.Commands
                         new Option(new [] { "--graph" }, "", new Argument<string>()),
                         new Option(new [] { "--partitionkey"}, "", new Argument<string>())
                     },
-                    argument: new Argument<string>() {Name = "connectionName", Arity = ArgumentArity.ExactlyOne},
+                    argument: new Argument<string>() { Name = "connectionName", Arity = ArgumentArity.ExactlyOne },
                     handler: CommandHandler.Create<string, CosmosDbConnection, bool>(_connectionCommands.AddConnection)
                 );
 
         }
+
 
         public Command Interactive() => new Command("interactive", "start gizmo interactive shell",
             symbols: new Option[]
@@ -120,33 +106,19 @@ namespace Gizmo.Commands
                 new Option("--take", "lines to take from the file", new Argument<int>(0)),
                 new Option("--parallel", "number of threads to use", new Argument<int>(1))
             },
-            argument: new Argument<FileInfo[]>()
-            {
-                Name = "files",
-                Description = "File containing queries to execute",
-                Arity = ArgumentArity.OneOrMore
-            }.ExistingOnly(),
+            argument: QueryFilesArgument(),        
             handler: CommandHandler.Create<string, ConnectionType, int, int, int, ParseResult>(
                 async (connectionName, connectionType, skip, take, parallel, parse) =>
-                await new ExecuteCommands(_connectionManager, _console)
-                    .LoadFile(parse.CommandResult.GetValueOrDefault<FileInfo[]>(), connectionName, connectionType, skip, take, parallel)
+                await new ExecuteCommands(_connectionManager, _console).LoadFile(parse.CommandResult.GetValueOrDefault<FileInfo[]>(), connectionName, connectionType, skip, take, parallel)
             )
-        //handler: CommandHandler.Create<FileInfo[], string, ConnectionType, int, int, int>(
-        //    async (files, connectionName, connectionType, skip, take, parallel) =>
-        //    await new ExecuteCommands(_connectionManager, _console).LoadFile(files, connectionName, connectionType, skip, take, parallel)
-        // )
-        // handler: CommandHandler.Create<ParseResult>( p => 
-        //     _console.WriteLine(p.Diagram())
-        // )            
-        // handler: CommandHandler.Create<string, ConnectionManager.ConnectionType, int, int, int, FileInfo >( 
-        //     async (connectionName, connectionType, skip, take, parallel, queries) => 
-        //     await new ExecuteCommands(_settings, _console).LoadFile(queries, connectionName, connectionType, skip, take, parallel)
-        // )
-        // handler: CommandHandler.Create<FileInfo, string, ConnectionManager.ConnectionType, int, int, int >( 
-        //     async (file, connectionName, connectionType, skip, take, parallel) => 
-        //     await new ExecuteCommands(_settings, _console).LoadFile(file, connectionName, connectionType, skip, take, parallel)
-        // )
         );
+
+        private Argument<string> ConnectionNameArgument() => new Argument<string>()
+        {
+            Name = "connectionName",
+            Arity = ArgumentArity.ExactlyOne
+        }
+        .FromAmong(_settings?.CosmosDbConnections?.Keys.ToArray() ?? new string[] { });
 
         public Command BulkFile() => new Command("bulk", "Execute queries from multiple files",
             new Option[] {
@@ -154,31 +126,30 @@ namespace Gizmo.Commands
                 QueryExecutorOption(),
                 new Option("--parallel", "number of threads to use", new Argument<int>(1))
             },
-            argument: new Argument<FileInfo>()
-            {
-                Name = "bulkFile",
-                Description = "File containing queries to execute",
-                Arity = ArgumentArity.ExactlyOne
-            }.ExistingOnly(),
-            // handler: CommandHandler.Create<ParseResult>( p => 
-            //     _console.WriteLine(p.Diagram())
-            // )            
+            argument: BulkFileArgument(),
             handler: CommandHandler.Create<string, ConnectionType, int, ParseResult>(
                 async (connectionName, connectionType, parallel, parse) =>
-                await new ExecuteCommands(_connectionManager, _console)
-                    .BulkFile(parse.CommandResult.GetValueOrDefault<FileInfo>(), connectionName, connectionType, parallel)
+                await new ExecuteCommands(_connectionManager, _console).BulkFile(parse.CommandResult.GetValueOrDefault<FileInfo>(), connectionName, connectionType, parallel)
             )
-        // handler: CommandHandler.Create<string, ConnectionManager.ConnectionType, int, int, int, FileInfo >( 
-        //     async (connectionName, connectionType, skip, take, parallel, queries) => 
-        //     await new ExecuteCommands(_settings, _console).LoadFile(queries, connectionName, connectionType, skip, take, parallel)
-        // )
-
-        // handler: CommandHandler.Create<FileInfo, string, ConnectionManager.ConnectionType, int, int, int >( 
-        //     async (file, connectionName, connectionType, skip, take, parallel) => 
-        //     await new ExecuteCommands(_settings, _console).LoadFile(file, connectionName, connectionType, skip, take, parallel)
-        // )
         );
 
+        private static Argument<FileInfo> BulkFileArgument() => new Argument<FileInfo>()
+        {
+            Name = "bulkFile",
+            Description = "File containing queries to execute",
+            Arity = ArgumentArity.ExactlyOne
+        }.ExistingOnly();
+
+
+        private static Argument<FileInfo[]> QueryFilesArgument() => new Argument<FileInfo[]>()
+        {
+            Name = "queries",
+            Description = "File containing queries to execute",
+            Arity = ArgumentArity.OneOrMore
+        }.ExistingOnly();
+
+        private static Option GlobalOption() => new Option(new[] { "--global", "-g" }, "", new Argument<bool>(false));
+        
         private Option ConnectionNameOption() => new Option(new[] { "--connection-name", "-c" }, "Name of the connection",
             new Argument<string>(defaultValue: () => _settings?.CosmosDbConnections?.Keys.First())
             {
@@ -192,13 +163,6 @@ namespace Gizmo.Commands
                 Arity = ArgumentArity.ExactlyOne
             }
         );
-
-        private Argument<string> ConnectionNameArgument() => new Argument<string>()
-        {
-            Name = "connectionName",
-            Arity = ArgumentArity.ExactlyOne
-        }
-        .FromAmong(_settings?.CosmosDbConnections?.Keys.ToArray() ?? new string[] { });
     }
 
 }

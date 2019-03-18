@@ -11,12 +11,12 @@ namespace Gizmo.Configuration
     {
         public Dictionary<string, CosmosDbConnection> CosmosDbConnections { get; set; } = new Dictionary<string, CosmosDbConnection>();
         
-        public static string ProfileConfig => Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.UserProfile), ".gizmo", "config.json");
+        public static string ProfileConfigPath => Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.UserProfile), ".gizmo", "config.json");
         public static string LocalConfigPath => Path.Combine(Directory.GetCurrentDirectory(), ".gizmo", "config.json");
 
         public static string GetConfigPath(bool global = false)
         {
-            return global ? ProfileConfig : LocalConfigPath;
+            return global ? ProfileConfigPath : LocalConfigPath;
         }
         public static async Task<GizmoConfig> LoadConfig(string configPath)
         {

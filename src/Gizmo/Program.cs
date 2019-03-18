@@ -98,24 +98,9 @@ namespace Gizmo
 
             var builder = new ConfigurationBuilder()
                 .AddJsonFile("appsettings.json")
-                .AddJsonFile(GizmoConfig.ProfileConfig, optional: true)
+                .AddJsonFile(GizmoConfig.ProfileConfigPath, optional: true)
                 .AddJsonFile(GizmoConfig.LocalConfigPath, optional: true);
 
-            // .AddConfiguration(new ConfigurationBuilder()
-            //     .SetBasePath(Path.GetDirectoryName(GizmoConfig.ProfileConfig))
-            //     .AddJsonFile(Path.GetFileName(GizmoConfig.ProfileConfig))
-            //     .Build()
-            // );
-
-            // builder
-
-            // builder.AddJsonFile()
-            // .AddJsonFile("appsettings.json")
-            // // .AddJsonFile(Path.GetRelativePath(AppContext.BaseDirectory, GizmoConfig.ProfileConfig))
-            // .AddJsonFile("../../../../../../../.gizmoconfig")
-            // .AddJsonFile(Path.GetRelativePath(AppContext.BaseDirectory, GizmoConfig.LocalConfigPath), optional: true)
-            // .AddUserSecrets<Program>()
-            // .AddCommandLine(args)
             return builder.Build();
         }
     }

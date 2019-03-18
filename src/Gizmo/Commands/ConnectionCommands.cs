@@ -21,35 +21,27 @@ namespace Gizmo.Commands
             _console = console;
         }
 
-        public int RemoveConnection(string connectionName)
+        public async Task<int> RemoveConnection(string connectionName, bool global)
         {
-            _console.WriteLine($"Removing {connectionName}");
+            string configPath = global ? GizmoConfig.ProfileConfigPath : GizmoConfig.LocalConfigPath;
+            _console.WriteLine($"Removing {connectionName} from {configPath}");
+                        
+            var settings = await GizmoConfig.LoadConfig(configPath);
+            settings.CosmosDbConnections.Remove(connectionName);
+            await GizmoConfig.SaveConfig(configPath, settings);
 
             return 0;
         }
 
         public async Task<int> AddConnection(string connectionName, CosmosDbConnection connection, bool global = false)
         {
-            _console.WriteLine($"Adding {connectionName}");
+            string configPath = global ? GizmoConfig.ProfileConfigPath : GizmoConfig.LocalConfigPath;
+            _console.WriteLine($"Adding {connectionName} to {configPath}");
 
-            string configPath = global ? GizmoConfig.ProfileConfig : GizmoConfig.LocalConfigPath;
-
-            GizmoConfig settings;
-
-            if (File.Exists(configPath))
-            {
-                settings = await GizmoConfig.LoadConfig(configPath);
-            }
-            else
-            {
-                settings = new GizmoConfig();
-            }
-
+            var settings = await GizmoConfig.LoadConfig(configPath);
             settings.CosmosDbConnections[connectionName] = connection;
-            
             await GizmoConfig.SaveConfig(configPath, settings);
 
-            _console.Dump(settings);
             return 0;
         }
 
