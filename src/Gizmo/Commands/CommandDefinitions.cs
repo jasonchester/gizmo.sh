@@ -107,7 +107,8 @@ namespace Gizmo.Commands
             argument: new Argument<string>() { Name = "query", Description = "gremlin graph query to execute" },
             handler: CommandHandler.Create<string, string, ConnectionType>(
                 async (query, connectionName, queryExecutor) =>
-                await new ExecuteCommands(_connectionManager, _console).ExecuteQuery(query, connectionName, queryExecutor)
+                await new ExecuteCommands(_connectionManager, _console)
+                    .ExecuteQuery(query, connectionName, queryExecutor)
             )
         );
 
@@ -121,22 +122,26 @@ namespace Gizmo.Commands
             },
             argument: new Argument<FileInfo[]>()
             {
-                Name = "queries",
+                Name = "files",
                 Description = "File containing queries to execute",
                 Arity = ArgumentArity.OneOrMore
             }.ExistingOnly(),
-            // handler: CommandHandler.Create<ParseResult>( p => 
-            //     _console.WriteLine(p.Diagram())
-            // )            
             handler: CommandHandler.Create<string, ConnectionType, int, int, int, ParseResult>(
                 async (connectionName, connectionType, skip, take, parallel, parse) =>
-                await new ExecuteCommands(_connectionManager, _console).LoadFile(parse.CommandResult.GetValueOrDefault<FileInfo[]>(), connectionName, connectionType, skip, take, parallel)
+                await new ExecuteCommands(_connectionManager, _console)
+                    .LoadFile(parse.CommandResult.GetValueOrDefault<FileInfo[]>(), connectionName, connectionType, skip, take, parallel)
             )
+        //handler: CommandHandler.Create<FileInfo[], string, ConnectionType, int, int, int>(
+        //    async (files, connectionName, connectionType, skip, take, parallel) =>
+        //    await new ExecuteCommands(_connectionManager, _console).LoadFile(files, connectionName, connectionType, skip, take, parallel)
+        // )
+        // handler: CommandHandler.Create<ParseResult>( p => 
+        //     _console.WriteLine(p.Diagram())
+        // )            
         // handler: CommandHandler.Create<string, ConnectionManager.ConnectionType, int, int, int, FileInfo >( 
         //     async (connectionName, connectionType, skip, take, parallel, queries) => 
         //     await new ExecuteCommands(_settings, _console).LoadFile(queries, connectionName, connectionType, skip, take, parallel)
         // )
-
         // handler: CommandHandler.Create<FileInfo, string, ConnectionManager.ConnectionType, int, int, int >( 
         //     async (file, connectionName, connectionType, skip, take, parallel) => 
         //     await new ExecuteCommands(_settings, _console).LoadFile(file, connectionName, connectionType, skip, take, parallel)
@@ -160,7 +165,8 @@ namespace Gizmo.Commands
             // )            
             handler: CommandHandler.Create<string, ConnectionType, int, ParseResult>(
                 async (connectionName, connectionType, parallel, parse) =>
-                await new ExecuteCommands(_connectionManager, _console).BulkFile(parse.CommandResult.GetValueOrDefault<FileInfo>(), connectionName, connectionType, parallel)
+                await new ExecuteCommands(_connectionManager, _console)
+                    .BulkFile(parse.CommandResult.GetValueOrDefault<FileInfo>(), connectionName, connectionType, parallel)
             )
         // handler: CommandHandler.Create<string, ConnectionManager.ConnectionType, int, int, int, FileInfo >( 
         //     async (connectionName, connectionType, skip, take, parallel, queries) => 
@@ -172,7 +178,6 @@ namespace Gizmo.Commands
         //     await new ExecuteCommands(_settings, _console).LoadFile(file, connectionName, connectionType, skip, take, parallel)
         // )
         );
-
 
         private Option ConnectionNameOption() => new Option(new[] { "--connection-name", "-c" }, "Name of the connection",
             new Argument<string>(defaultValue: () => _settings?.CosmosDbConnections?.Keys.First())

@@ -83,17 +83,17 @@ namespace Gizmo
         {
             // System.Console.WriteLine("basepath: " + Path.GetDirectoryName(GizmoConfig.ProfileConfig));
             // System.Console.WriteLine("profile: " + Path.GetFileName(GizmoConfig.LocalConfigPath));
-            System.Console.WriteLine($"Loding ProfileConfig from: {GizmoConfig.ProfileConfig}");
-            if (File.Exists(GizmoConfig.ProfileConfig))
-            {
-                System.Console.WriteLine(File.ReadAllText(GizmoConfig.ProfileConfig));
-            }
+            //System.Console.WriteLine($"Loding ProfileConfig from: {GizmoConfig.ProfileConfig}");
+            //if (File.Exists(GizmoConfig.ProfileConfig))
+            //{
+            //    System.Console.WriteLine(File.ReadAllText(GizmoConfig.ProfileConfig));
+            //}
 
-            System.Console.WriteLine($"Loding LocalConfig from: {GizmoConfig.LocalConfigPath}");
-            if (File.Exists(GizmoConfig.LocalConfigPath))
-            {
-                System.Console.WriteLine(File.ReadAllText(GizmoConfig.LocalConfigPath));
-            }
+            //System.Console.WriteLine($"Loding LocalConfig from: {GizmoConfig.LocalConfigPath}");
+            //if (File.Exists(GizmoConfig.LocalConfigPath))
+            //{
+            //    System.Console.WriteLine(File.ReadAllText(GizmoConfig.LocalConfigPath));
+            //}
 
 
             var builder = new ConfigurationBuilder()

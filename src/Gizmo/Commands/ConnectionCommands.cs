@@ -32,12 +32,19 @@ namespace Gizmo.Commands
         {
             _console.WriteLine($"Adding {connectionName}");
 
-            // var config = new AppSettings();
-            // var builder = new ConfigurationBuilder()
-
             string configPath = global ? GizmoConfig.ProfileConfig : GizmoConfig.LocalConfigPath;
-            
-            var settings = await GizmoConfig.LoadConfig(configPath);
+
+            GizmoConfig settings;
+
+            if (File.Exists(configPath))
+            {
+                settings = await GizmoConfig.LoadConfig(configPath);
+            }
+            else
+            {
+                settings = new GizmoConfig();
+            }
+
             settings.CosmosDbConnections[connectionName] = connection;
             
             await GizmoConfig.SaveConfig(configPath, settings);

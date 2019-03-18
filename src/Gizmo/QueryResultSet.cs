@@ -56,7 +56,7 @@ namespace Gizmo
         /// <inheritdoc />
         public override string ToString()
         {
-            return $"executed in {ElapsedTime}, RUs {RequestCharge}, {Count} results.";
+            return $"{Query} executed in {ElapsedTime}, RUs {RequestCharge}, {Count} results.";
         }
 
         public string ResultsToJson(Formatting formatting = Formatting.None) => JsonConvert.SerializeObject(_data, formatting);
