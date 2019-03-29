@@ -344,7 +344,7 @@ namespace Gizmo.Interactive
         {
             _console.ClearLine();
 
-            _console.WriteLine(output.Truncate(_console.BufferWidth - 1, "..."));
+            _console.WriteLine(output.Truncate(_console.BufferWidth - 4, "..."));
         }
 
         private void HandleCancelKeyPress(object s, ConsoleCancelEventArgs e)

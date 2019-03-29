@@ -157,7 +157,7 @@ namespace Gizmo.Commands
             }
         );
 
-        private Option QueryExecutorOption() => new Option(new[] { "--query-executor", "-e" }, "Type of query executor to use",
+        private Option QueryExecutorOption() => new Option(new[] { "--connection-type", "-t" }, "Type of query executor to use",
             new Argument<ConnectionType>(defaultValue: ConnectionType.AzureGraphs)
             {
                 Arity = ArgumentArity.ExactlyOne
