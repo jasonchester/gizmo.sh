@@ -12,19 +12,17 @@ namespace Gizmo.Connection
         private readonly IConsole _console;
         private readonly GizmoConfig _settings;
 
+        public CosmosDbConnection CurrentConfig => _settings.CosmosDbConnections[CurrentName];
+        public string CurrentName { get; private set; } = null;
+        public ConnectionType CurrentType { get; private set; } = ConnectionType.AzureGraphs;
+        public IQueryExecutor CurrentQueryExecutor { get; private set; } = null;
+        
         public ConnectionManager(GizmoConfig settings, IConsole console)
         {
             _settings = settings;
             _console = console;
         }
-
-        public CosmosDbConnection CurrentConfig => _settings.CosmosDbConnections[CurrentName];
-
-        public string CurrentName { get; private set; } = null;
-        public ConnectionType CurrentType { get; private set; } = ConnectionType.AzureGraphs;
-        public IQueryExecutor CurrentQueryExecutor { get; private set; } = null;
-
-
+        
         public async Task<IQueryExecutor> Open(string connectionName, ConnectionType connectionType, CancellationToken ct = default)
         {
             if (!_settings.CosmosDbConnections.ContainsKey(connectionName))

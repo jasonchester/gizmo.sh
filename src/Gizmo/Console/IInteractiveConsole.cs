@@ -20,6 +20,5 @@ namespace Gizmo.Console
         Task WaitForAnyKey();
 
         string Edit(string prompt, string initial = null);
-
     }
 }

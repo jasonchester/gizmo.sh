@@ -16,10 +16,8 @@ namespace Gizmo.Connection
     public class GremlinExecutor : IQueryExecutor
     {
         private readonly IConsole _console;
-
         private readonly GremlinClient _client;
         private readonly GremlinServer _server;
-
         private readonly string _partitionKey;
         public string RemoteMessage => $"gremlin: {_server.Username}@{_server.Uri}";
 
@@ -78,8 +76,5 @@ namespace Gizmo.Connection
             var gremlinServer = new GremlinServer(hostname, port, enableSsl: true, username: $"/dbs/{databaseId}/colls/{graphId}", password: authKey);
             return gremlinServer;
         }
-
     }
-
-
 }
