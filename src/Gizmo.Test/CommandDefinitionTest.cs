@@ -1,6 +1,7 @@
 ﻿using FluentAssertions;
 using Gizmo.Commands;
 using Gizmo.Configuration;
+using Gizmo.Connection;
 using Gizmo.Console;
 using System;
 using System.Collections.Generic;

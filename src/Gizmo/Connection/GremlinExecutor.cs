@@ -11,7 +11,7 @@ using Gremlin.Net.Structure.IO.GraphSON;
 using Microsoft.Extensions.Configuration;
 using Newtonsoft.Json;
 
-namespace Gizmo
+namespace Gizmo.Connection
 {
     public class GremlinExecutor : IQueryExecutor
     {

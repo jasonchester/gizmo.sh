@@ -4,7 +4,7 @@ using System.CommandLine;
 using System.Threading;
 using System.Threading.Tasks;
 
-namespace Gizmo
+namespace Gizmo.Connection
 {
     public class ConnectionManager : IDisposable
     {

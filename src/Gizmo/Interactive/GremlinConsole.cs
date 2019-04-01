@@ -1,4 +1,5 @@
 ﻿using Gizmo.Configuration;
+using Gizmo.Connection;
 using Gizmo.Console;
 using Kurukuru;
 using System;

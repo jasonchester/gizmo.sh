@@ -7,6 +7,7 @@ using System.Collections.Generic;
 using System.Collections.Async;
 using System.Threading;
 using System.Collections.Concurrent;
+using Gizmo.Connection;
 
 namespace Gizmo.Commands
 {

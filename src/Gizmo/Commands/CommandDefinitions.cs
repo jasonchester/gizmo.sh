@@ -1,4 +1,5 @@
 using Gizmo.Configuration;
+using Gizmo.Connection;
 using Gizmo.Console;
 using Gizmo.Interactive;
 using System;
@@ -55,7 +56,6 @@ namespace Gizmo.Commands
                     handler: CommandHandler.Create<string, bool>(_connectionCommands.RemoveConnection)
                 );
 
-
             Command Add() => new Command("add", "Add a Connection",
                     new Option[] {
                         new Option(new [] { "--global", "-g"}, "", new Argument<bool>(false)),
@@ -73,12 +73,11 @@ namespace Gizmo.Commands
 
         }
 
-
         public Command Interactive() => new Command("interactive", "start gizmo interactive shell",
             symbols: new Option[]
             {
                 ConnectionNameOption(),
-                QueryExecutorOption()
+                ConnectionTypeOption()
             },
             handler: CommandHandler.Create<string, ConnectionType>(
                 async (connectionName, connectionType) =>
@@ -88,7 +87,7 @@ namespace Gizmo.Commands
         public Command Execute() => new Command("execute", "Execute the query",
             new Option[] {
                 ConnectionNameOption(),
-                QueryExecutorOption()
+                ConnectionTypeOption()
             },
             argument: new Argument<string>() { Name = "query", Description = "gremlin graph query to execute" },
             handler: CommandHandler.Create<string, string, ConnectionType>(
@@ -101,7 +100,7 @@ namespace Gizmo.Commands
         public Command LoadFile() => new Command("load", "Execute queries from files",
             new Option[] {
                 ConnectionNameOption(),
-                QueryExecutorOption(),
+                ConnectionTypeOption(),
                 new Option("--skip", "lines to skip from the file", new Argument<int>(0)),
                 new Option("--take", "lines to take from the file", new Argument<int>(0)),
                 new Option("--parallel", "number of threads to use", new Argument<int>(1))
@@ -113,17 +112,10 @@ namespace Gizmo.Commands
             )
         );
 
-        private Argument<string> ConnectionNameArgument() => new Argument<string>()
-        {
-            Name = "connectionName",
-            Arity = ArgumentArity.ExactlyOne
-        }
-        .FromAmong(_settings?.CosmosDbConnections?.Keys.ToArray() ?? new string[] { });
-
         public Command BulkFile() => new Command("bulk", "Execute queries from multiple files",
             new Option[] {
                 ConnectionNameOption(),
-                QueryExecutorOption(),
+                ConnectionTypeOption(),
                 new Option("--parallel", "number of threads to use", new Argument<int>(1))
             },
             argument: BulkFileArgument(),
@@ -133,13 +125,19 @@ namespace Gizmo.Commands
             )
         );
 
+        private Argument<string> ConnectionNameArgument() => new Argument<string>()
+        {
+            Name = "connectionName",
+            Arity = ArgumentArity.ExactlyOne
+        }
+        .FromAmong(_settings?.CosmosDbConnections?.Keys.ToArray() ?? new string[] { });
+
         private static Argument<FileInfo> BulkFileArgument() => new Argument<FileInfo>()
         {
             Name = "bulkFile",
             Description = "File containing queries to execute",
             Arity = ArgumentArity.ExactlyOne
         }.ExistingOnly();
-
 
         private static Argument<FileInfo[]> QueryFilesArgument() => new Argument<FileInfo[]>()
         {
@@ -157,7 +155,7 @@ namespace Gizmo.Commands
             }
         );
 
-        private Option QueryExecutorOption() => new Option(new[] { "--connection-type", "-t" }, "Type of query executor to use",
+        private Option ConnectionTypeOption() => new Option(new[] { "--connection-type", "-t" }, "Type of query executor to use",
             new Argument<ConnectionType>(defaultValue: ConnectionType.AzureGraphs)
             {
                 Arity = ArgumentArity.ExactlyOne

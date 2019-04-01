@@ -1,18 +1,5 @@
-﻿using System;
-using System.Collections;
-using System.Collections.Async;
-using System.Collections.Generic;
-using System.Collections.Concurrent;
-using System.Diagnostics;
-using System.IO;
-using System.Linq;
-using System.Text;
-using System.Text.RegularExpressions;
-using System.Threading;
-using System.Threading.Tasks;
-using Kurukuru;
+﻿using System.Threading.Tasks;
 using Microsoft.Extensions.Configuration;
-using Mono.Terminal;
 using Gizmo.Commands;
 using Gizmo.Configuration;
 using System.CommandLine.Builder;
@@ -21,7 +8,7 @@ using System.CommandLine;
 using System.CommandLine.Rendering;
 using Gizmo.Console;
 using Autofac;
-using Microsoft.Extensions.Configuration.Json;
+using Gizmo.Connection;
 
 namespace Gizmo
 {

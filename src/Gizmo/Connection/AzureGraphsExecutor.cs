@@ -13,7 +13,7 @@ using Gizmo.Configuration;
 using Gizmo.Console;
 using System.CommandLine;
 
-namespace Gizmo
+namespace Gizmo.Connection
 {
     public class AzureGraphsExecutor : IQueryExecutor
     {

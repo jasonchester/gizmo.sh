@@ -2,7 +2,7 @@ using System;
 using System.Threading;
 using System.Threading.Tasks;
 
-namespace Gizmo
+namespace Gizmo.Connection
 {
     public interface IQueryExecutor : IDisposable
     {

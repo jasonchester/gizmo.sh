@@ -1,4 +1,4 @@
-namespace Gizmo
+namespace Gizmo.Connection
 {
     public enum ConnectionType
     {
