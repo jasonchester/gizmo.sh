@@ -33,58 +33,63 @@ namespace Gizmo.Commands
         }
 
         public async Task<int> LoadFile(
-            IEnumerable<FileInfo> files, 
-            string connectionName, 
-            ConnectionType connectionType, 
-            int skip = 0, 
-            int take = 0, 
-            int maxThreads = 8, 
+            IEnumerable<FileInfo> files,
+            string connectionName,
+            ConnectionType connectionType,
+            int skip = 0,
+            int take = 0,
+            int maxThreads = 8,
             CancellationToken ct = default)
         {
-            var results = new ConcurrentQueue<QueryResultSet<dynamic>>();
-            var exec = await _connectionManager.Open(connectionName, connectionType, ct);
-
-            if(!await exec.TestConnection(ct))
+            using (var results = new BlockingCollection<QueryResultSet<dynamic>>(new ConcurrentQueue<QueryResultSet<dynamic>>()))
             {
-                _console.WriteLine($"Unable to connect.");
-                return 1;
-            }
+                var exec = await _connectionManager.Open(connectionName, connectionType, ct);
 
-            foreach(var file in files)
-            {
-                _console.WriteLine($"Executing queries from {file} on {connectionName} using {connectionType} using {maxThreads} threads.");
-                
-                IEnumerable<string> queries = await File.ReadAllLinesAsync(file.FullName);
-                if(skip > 0) {
-                    _console.WriteLine($"skipping {skip} lines.");
-                    queries = queries.Skip(skip);
-                }
-                if(take > 0) 
+                if (!await exec.TestConnection(ct))
                 {
-                    _console.WriteLine($"taking {take} lines.");
-                    queries = queries.Take(take);
+                    _console.WriteLine($"Unable to connect.");
+                    return 1;
                 }
 
-                var process = queries.ParallelForEachAsync(
-                    async q => {
-                        results.Enqueue(await exec.ExecuteQuery<dynamic>(q, ct));
-                    },
-                    maxDegreeOfParalellism: maxThreads,
-                    cancellationToken: ct
-                );
+                var loadTasks = new List<Task>();
 
-                var report = Task.Run(async () => {
-                    while(!process.IsCompleted)
+                var reporter = Task.Run(() =>
+                {
+                    while (results.TryTake(out var result, -1))
                     {
-                        if(results.TryDequeue(out var result))
-                        {
-                            _console.WriteLine(result.Message);
-                        }
-                        await Task.Delay(1000);
+                        _console.WriteLine(result.Message);
                     }
                 });
 
-                await Task.WhenAll(report, process);
+                foreach (var file in files)
+                {
+                    _console.WriteLine($"Executing queries from {file} on {connectionName} using {connectionType} using {maxThreads} threads.");
+
+                    IEnumerable<string> queries = await File.ReadAllLinesAsync(file.FullName);
+                    if (skip > 0)
+                    {
+                        _console.WriteLine($"skipping {skip} lines.");
+                        queries = queries.Skip(skip);
+                    }
+                    if (take > 0)
+                    {
+                        _console.WriteLine($"taking {take} lines.");
+                        queries = queries.Take(take);
+                    }
+
+                    await queries.ParallelForEachAsync(
+                        async q =>
+                        {
+                            results.Add(await exec.ExecuteQuery<dynamic>(q, ct));
+                        },
+                        maxDegreeOfParalellism: maxThreads,
+                        cancellationToken: ct
+                    );
+                }
+
+                results.CompleteAdding();
+
+                await reporter;
             }
             return 0;
         }
@@ -100,7 +105,7 @@ namespace Gizmo.Commands
                 (fileName) => bulkDir.GetFiles(fileName)
             );
 
-            return await LoadFile(queryFiles, connectionName, connectionType, maxThreads:maxThreads);
+            return await LoadFile(queryFiles, connectionName, connectionType, maxThreads: maxThreads);
         }
     }
 

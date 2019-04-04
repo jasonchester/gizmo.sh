@@ -23,11 +23,11 @@ namespace Gizmo
 
             if(ellipsis.IsNullOrEmpty())
             {
-                text = text.Substring(0, length - ellipsis.Length);
+                text = text.Substring(0, length);
             }
             else
             {
-                text = text.Substring(0, length);
+                text = text.Substring(0, length - ellipsis.Length);
             }
 
             if (breakOnWord)

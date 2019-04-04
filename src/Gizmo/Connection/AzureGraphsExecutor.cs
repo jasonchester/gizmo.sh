@@ -19,7 +19,6 @@ namespace Gizmo.Connection
     {
         private readonly CosmosDbConnection _config;
         private readonly IConsole _console;
-
         private DocumentClient _client;
         private DocumentCollection _graph;
 
