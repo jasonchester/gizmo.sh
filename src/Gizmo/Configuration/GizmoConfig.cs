@@ -37,6 +37,7 @@ namespace Gizmo.Configuration
         public static async Task SaveConfig(string configPath, GizmoConfig settings)
         {
             var configString = JsonConvert.SerializeObject(settings, Formatting.Indented);
+            Directory.CreateDirectory(Path.GetDirectoryName(configPath));
             await File.WriteAllTextAsync(configPath, configString);
         }
     }
