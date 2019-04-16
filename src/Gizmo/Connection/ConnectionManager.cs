@@ -74,17 +74,20 @@ namespace Gizmo.Connection
         public async Task<IQueryExecutor> SwitchConnectionType(CancellationToken ct = default)
         {
             IQueryExecutor newExec = null;
+            ConnectionType newType;
             try
             {
                 switch (CurrentType)
                 {
                     case ConnectionType.AzureGraphs:
                         newExec = new GremlinExecutor(_settings.CosmosDbConnections[CurrentName], _console);
+                        newType = ConnectionType.GremlinNet;
                         break;
 
                     case ConnectionType.GremlinNet: //fall through here intentional
                     default:
                         newExec = new AzureGraphsExecutor(_settings.CosmosDbConnections[CurrentName], _console);
+                        newType = ConnectionType.AzureGraphs;
                         break;
                 }
             }
@@ -96,6 +99,7 @@ namespace Gizmo.Connection
             {
                 CurrentQueryExecutor?.Dispose();
                 CurrentQueryExecutor = newExec;
+                CurrentType = newType;
                 return CurrentQueryExecutor;
             }
             throw new ApplicationException("Failed to switch executors.");
