@@ -1,2 +1,2 @@
-dotnet pack ./src/Gizmo/Gizmo.csproj -o %cd%
-dotnet tool install -g --add-source %cd% gizmo
+dotnet pack .\src\Gizmo\Gizmo.csproj -o %cd%\out
+dotnet tool install -g --add-source %cd%\out gizmo
