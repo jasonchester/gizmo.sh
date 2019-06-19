@@ -10,6 +10,5 @@ pool:
   vmImage: 'ubuntu-latest'
 
 steps:
-
-- script: build-selfcontained.sh
+- script: ./build-selfcontained.sh
   displayName: 'build selfcontainer releases'
