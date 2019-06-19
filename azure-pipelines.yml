@@ -38,6 +38,7 @@ steps:
 
 - task: GitHubRelease@0
   inputs:
+    gitHubConnection: github-jasonchester
     repositoryName: '$(Build.Repository.Name)'
     action: 'create'
     target: '$(Build.SourceVersion)'
