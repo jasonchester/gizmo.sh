@@ -42,4 +42,8 @@ steps:
     repositoryName: '$(Build.Repository.Name)'
     action: 'create'
     target: '$(Build.SourceVersion)'
-    tagSource: 'auto'
+    tagSource: 'manual'
+    tag: 'gizmo_$(Build.BuildId)'
+    title: 'gizmo $(Build.BuildId)'
+    isDraft: true
+    isPreRelease: true
