@@ -12,6 +12,7 @@ using Microsoft.Azure.Graphs;
 using Gizmo.Configuration;
 using Gizmo.Console;
 using System.CommandLine;
+using Polly;
 
 namespace Gizmo.Connection
 {
@@ -49,6 +50,7 @@ namespace Gizmo.Connection
                 {
                     connectionPolicy.ConnectionMode = ConnectionMode.Direct;
                     connectionPolicy.ConnectionProtocol = Protocol.Tcp;
+                    connectionPolicy.RetryOptions.MaxRetryAttemptsOnThrottledRequests = 0;
                 }
 
                 var client = new DocumentClient(
@@ -104,16 +106,28 @@ namespace Gizmo.Connection
             // double cost = 0;
             var q = _client.CreateGremlinQuery<T>(_graph, query);
 
-
+            
             var results = new FeedResponseAggregator<T>(query);
+            int totalRetries = 0;
+
             while (q.HasMoreResults && !ct.IsCancellationRequested)
             {
-                var feedResponse = await q.ExecuteNextAsync<T>(ct);
+                int retryCount = 0;
+                var feedResponse = await GizmoPolicies.CosmosRetryAfterWait(
+                    new RetryOption()
+                ).ExecuteAsync( (context) => {
+                    retryCount = (int)context["retryCount"];
+                    return q.ExecuteNextAsync<T>(ct);
+                }, new Polly.Context
+                {
+                    {"retryCount", 0}
+                });
+                totalRetries += retryCount;
                 results.AddResponse(feedResponse);
             }
             //output.Insert(0, $"executed in {timer.Elapsed}. {cost:N2} RUs. {count} results. {output.Length} characters.{Environment.NewLine}");
             //return output.ToString();
-            return results.ToQueryResultSet();
+            return results.ToQueryResultSet(totalRetries);
         }
 
         private class FeedResponseAggregator<T>
@@ -132,7 +146,7 @@ namespace Gizmo.Connection
                 responses.Add(response);
             }
 
-            public QueryResultSet<T> ToQueryResultSet()
+            public QueryResultSet<T> ToQueryResultSet(int retryCount = 0)
             {
                 timer.Stop();
 
@@ -145,7 +159,7 @@ namespace Gizmo.Connection
                     ["ElapsedTime"] = timer.Elapsed
                 };
 
-                return new QueryResultSet<T>(_query, data.AsReadOnly(), timer.Elapsed, requestCharge, attributes);
+                return new QueryResultSet<T>(_query, data.AsReadOnly(), timer.Elapsed, requestCharge, retryCount, attributes);
             }
         }
     }
