@@ -1,5 +1,4 @@
-﻿using Gizmo.Configuration;
-using Gizmo.Console;
+﻿using Gizmo.Console;
 using System.Threading.Tasks;
 using System.IO;
 using System.Linq;
@@ -127,8 +126,30 @@ namespace Gizmo.Commands
                         async (q, queryNumber) =>
                         {
                             Interlocked.Increment(ref queriesProcessed);
-                            results.Add(new BulkResult<dynamic>(await exec.ExecuteQuery<dynamic>(q, ct), 
-                                Thread.CurrentThread.ManagedThreadId, file.Name, queryNumber + skip, queriesProcessed, totalQueries, fileTimer.Elapsed, bulkTimer.Elapsed));
+
+                            IOperationResult result;
+
+                            try
+                            {
+
+                                var qResult = await exec.ExecuteQuery<dynamic>(q, ct);
+
+                                result = new BulkResult<dynamic>(
+                                    qResult,
+                                    Thread.CurrentThread.ManagedThreadId, 
+                                    file.Name, 
+                                    queryNumber + skip, 
+                                    queriesProcessed, 
+                                    totalQueries, 
+                                    fileTimer.Elapsed, 
+                                    bulkTimer.Elapsed);
+                            }
+                            catch (System.Exception)
+                            {
+                                result = null;
+                            }
+
+                            results.Add(result);
                         },
                         maxDegreeOfParalellism: maxThreads,
                         cancellationToken: ct
