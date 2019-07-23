@@ -145,7 +145,7 @@ namespace Gizmo.Connection
                     ["ElapsedTime"] = timer.Elapsed
                 };
 
-                return new QueryResultSet<T>(_query, data.AsReadOnly(), timer.Elapsed, requestCharge, attributes);
+                return new QueryResultSet<T>(_query, data.AsReadOnly(), timer.Elapsed, requestCharge, 0, attributes);
             }
         }
     }

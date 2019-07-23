@@ -131,7 +131,6 @@ namespace Gizmo.Commands
 
                             try
                             {
-
                                 var qResult = await exec.ExecuteQuery<dynamic>(q, ct);
 
                                 result = new BulkResult<dynamic>(
@@ -144,9 +143,9 @@ namespace Gizmo.Commands
                                     fileTimer.Elapsed, 
                                     bulkTimer.Elapsed);
                             }
-                            catch (System.Exception)
+                            catch (System.Exception ex)
                             {
-                                result = null;
+                                result = new ErrorResult(ex);
                             }
 
                             results.Add(result);

@@ -10,6 +10,7 @@ namespace Gizmo.Connection
         public IReadOnlyCollection<T> Data { get; }
         public string Query { get; }
         public TimeSpan ElapsedTime { get; }
+        public int RetryCount {get; }
 
         public double RequestCharge { get; }
 
@@ -23,12 +24,13 @@ namespace Gizmo.Connection
         /// </summary>
         /// <param name="data"></param>
         /// <param name="attributes"></param>
-        public QueryResultSet(string query, IReadOnlyCollection<T> data, TimeSpan elapsedTime, double requestCharge, IReadOnlyDictionary<string, object> attributes)
+        public QueryResultSet(string query, IReadOnlyCollection<T> data, TimeSpan elapsedTime, double requestCharge, int retryCount, IReadOnlyDictionary<string, object> attributes)
         {
             Query = query;
             Data = data;
             ElapsedTime = elapsedTime;
             RequestCharge = requestCharge;
+            RetryCount = retryCount;
             this.StatusAttributes = attributes;
         }
 
@@ -58,7 +60,7 @@ namespace Gizmo.Connection
         /// <inheritdoc />
         public override string ToString()
         {
-            return $"[{ElapsedTime}, RUs {RequestCharge}, {Count} results] {Query}";
+            return $"[{ElapsedTime}, RUs {RequestCharge}, retries {RetryCount}, {Count} results] {Query}";
         }
 
         /// <summary>

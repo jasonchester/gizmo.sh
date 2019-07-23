@@ -10,6 +10,8 @@ using Gremlin.Net.Driver;
 using Gremlin.Net.Structure.IO.GraphSON;
 using Microsoft.Extensions.Configuration;
 using Newtonsoft.Json;
+using Polly;
+using static Gizmo.Connection.GizmoPolicies;
 
 namespace Gizmo.Connection
 {
@@ -19,19 +21,15 @@ namespace Gizmo.Connection
         private readonly GremlinClient _client;
         private readonly GremlinServer _server;
         private readonly string _partitionKey;
+
         public string RemoteMessage => $"gremlin: {_server.Username}@{_server.Uri}";
 
-        public GremlinExecutor(GremlinServer server, CosmosDbConnection config, IConsole console)
+        public GremlinExecutor(CosmosDbConnection config, IConsole console)
         {
             _console = console;
-            _server = server;
+            _server = GremlinExecutor.GetGremlinServer(config);
             _partitionKey = config.PartitionKey;
             _client = new GremlinClient(_server, new GraphSON2Reader(), new GraphSON2Writer(), GremlinClient.GraphSON2MimeType);
-        }
-
-        public GremlinExecutor(CosmosDbConnection config, IConsole console) : this(GremlinExecutor.GetGremlinServer(config), config, console)
-        {
-            //intentionally blank
         }
 
         public void Dispose()
@@ -56,13 +54,26 @@ namespace Gizmo.Connection
 
         public async Task<QueryResultSet<T>> ExecuteQuery<T>(string query, CancellationToken ct = default)
         {
+            var retryCount = 0;
             var timer = new System.Diagnostics.Stopwatch();
             timer.Start();
-            var results = await _client.SubmitAsync<T>(query);
+            var results = await CosmosRetryAfterWait(
+                new RetryOption() //{ RetryCount = 5, WaitTime = 30} these are the defaults
+            ).ExecuteAsync(
+                (context) =>
+                {
+                    retryCount = (int)context["retryCount"];
+                    return _client.SubmitAsync<T>(query);
+                }, new Polly.Context
+                {
+                    {"retryCount", 0}
+                }
+            );
             timer.Stop();
 
             var requestCharge = (double)results.StatusAttributes["x-ms-total-request-charge"];
-            return new QueryResultSet<T>(query, results, timer.Elapsed, requestCharge, results.StatusAttributes);
+            return new QueryResultSet<T>(query, results, timer.Elapsed, requestCharge, retryCount, results.StatusAttributes);
+
         }
 
         private static GremlinServer GetGremlinServer(CosmosDbConnection config)
