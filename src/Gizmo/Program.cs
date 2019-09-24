@@ -5,7 +5,7 @@ using Gizmo.Configuration;
 using System.CommandLine.Builder;
 using System.CommandLine.Invocation;
 using System.CommandLine;
-using System.CommandLine.Rendering;
+// using System.CommandLine.Rendering;
 using Gizmo.Console;
 using Autofac;
 using Gizmo.Connection;
@@ -39,7 +39,7 @@ namespace Gizmo
                 .UseTypoCorrections()
                 .UseHelp()
 
-                .UseAnsiTerminalWhenAvailable()
+                // .UseAnsiTerminalWhenAvailable()
 
                 .Build();
 
