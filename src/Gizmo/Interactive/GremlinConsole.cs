@@ -4,7 +4,7 @@ using Gizmo.Console;
 using Kurukuru;
 using System;
 using System.Collections;
-using System.Collections.Async;
+using Dasync.Collections;
 using System.Collections.Concurrent;
 using System.Collections.Generic;
 using System.CommandLine;
@@ -331,7 +331,7 @@ namespace Gizmo.Interactive
                         ConsoleWrite(output);
                     }
                 },
-                maxDegreeOfParalellism: dop,
+                maxDegreeOfParallelism: dop,
                 cancellationToken: ct
             );
 

@@ -3,7 +3,7 @@ using System.Threading.Tasks;
 using System.IO;
 using System.Linq;
 using System.Collections.Generic;
-using System.Collections.Async;
+using Dasync.Collections;
 using System.Threading;
 using System.Collections.Concurrent;
 using Gizmo.Connection;
@@ -149,8 +149,7 @@ namespace Gizmo.Commands
                             }
 
                             results.Add(result);
-                        },
-                        maxDegreeOfParalellism: maxThreads,
+                        }, maxDegreeOfParallelism: maxThreads,
                         cancellationToken: ct
                     );
                 }
