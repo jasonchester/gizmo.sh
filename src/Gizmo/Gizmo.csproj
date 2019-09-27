@@ -1,15 +1,32 @@
 <Project Sdk="Microsoft.NET.Sdk">
 
   <PropertyGroup>
+    <OutputType>Exe</OutputType>
+    <TargetFramework>netcoreapp3.0</TargetFramework>
+    <LangVersion>latest</LangVersion>
+    <ToolCommandName>gizmo</ToolCommandName>
+    <AssemblyName>gizmo</AssemblyName>
+    <PackAsTool>true</PackAsTool>
+    <RuntimeIdentifiers>win-x64;linux-x64;osx-x64;</RuntimeIdentifiers>
+  </PropertyGroup>
+
+  <!-- <PropertyGroup>
+    <BuildConfig Condition=" '$(BuildConfig)' == '' ">GlobalTool</BuildConfig>
+  </PropertyGroup>
+
+  <PropertyGroup Condition="'$(BuildConfig)' == 'GlobalTool'">
     <ToolCommandName>gizmo</ToolCommandName>
     <PackAsTool>True</PackAsTool>
-    <OutputType>Exe</OutputType>
-    <TargetFramework>netcoreapp2.2</TargetFramework>
-    <LangVersion>latest</LangVersion>
+  </PropertyGroup> -->
+
+  <PropertyGroup Condition="'$(PackAsTool)' == 'false'">
+    <PublishTrimmed>true</PublishTrimmed>
+    <PublishSingleFile>true</PublishSingleFile>
+    <RuntimeIdentifiers>win-x64;linux-x64;osx-x64;</RuntimeIdentifiers>
   </PropertyGroup>
 
   <PropertyGroup>
-    <VersionPrefix>1.0.7</VersionPrefix>
+    <VersionPrefix>1.1.0</VersionPrefix>
   </PropertyGroup>
 
   <ItemGroup>
@@ -18,18 +35,14 @@
     <PackageReference Include="Gremlin.Net" Version="3.4.3" />
     <PackageReference Include="Kurukuru" Version="1.1.0" />
     <PackageReference Include="Microsoft.Azure.Graphs" Version="0.3.1-preview" />
-    <PackageReference Include="Microsoft.Extensions.Configuration" Version="2.2.0" />
-    <PackageReference Include="Microsoft.Extensions.Configuration.Binder" Version="2.2.4" />
-    <PackageReference Include="Microsoft.Extensions.Configuration.Json" Version="2.2.0" />
+    <PackageReference Include="Microsoft.Extensions.Configuration" Version="3.0.0" />
+    <PackageReference Include="Microsoft.Extensions.Configuration.Binder" Version="3.0.0" />
+    <PackageReference Include="Microsoft.Extensions.Configuration.Json" Version="3.0.0" />
     <!-- <PackageReference Include="Microsoft.Extensions.Configuration.UserSecrets" Version="2.2.0" />
     <PackageReference Include="Microsoft.Extensions.Configuration.CommandLine" Version="2.2.0" /> -->
-    <PackageReference Include="Microsoft.Extensions.Options" Version="2.2.0" />
+    <PackageReference Include="Microsoft.Extensions.Options" Version="3.0.0" />
     <PackageReference Include="Newtonsoft.Json" Version="12.0.2" />
     <PackageReference Include="polly" Version="7.1.1" />
-    <PackageReference Include="Puma.Security.Rules" Version="2.3.0">
-      <IncludeAssets>runtime; build; native; contentfiles; analyzers; buildtransitive</IncludeAssets>
-      <PrivateAssets>all</PrivateAssets>
-    </PackageReference>
     <PackageReference Include="System.CommandLine.Experimental" Version="0.3.0-alpha.19405.1" />
     <!-- <PackageReference Include="System.CommandLine.Rendering" Version="0.3.0-alpha.19317.1" /> -->
 
