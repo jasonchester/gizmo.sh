@@ -6,6 +6,7 @@
     <OutputType>Exe</OutputType>
     <TargetFramework>netcoreapp2.2</TargetFramework>
     <LangVersion>latest</LangVersion>
+    <ProjectGuid>{CE0D64F7-7593-4A59-A0EF-ABB783E91816}</ProjectGuid>
   </PropertyGroup>
 
   <PropertyGroup>
