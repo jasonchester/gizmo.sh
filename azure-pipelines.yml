@@ -8,8 +8,7 @@ trigger:
 
 
 stages:
-  - stage: build and analyze
-
+  - stage: build
     jobs:
       - job: build         
         pool:
@@ -36,10 +35,12 @@ stages:
         - task: SonarCloudPublish@1
           displayName: 'Publish SonarCloud quality gate results'
 
+  - stage: publishgithub
+    dependsOn: build
+    jobs:
       - job: publish
         pool:
           vmImage: 'ubuntu-latest'
-        dependsOn: build
         steps:
           - script: ./build-selfcontained.sh
             displayName: 'build selfcontained release'
