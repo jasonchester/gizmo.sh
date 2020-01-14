@@ -24,7 +24,7 @@ stages:
             SonarCloud: 'sonar-cloud-public'
             organization: 'jasonchester'
             scannerMode: 'MSBuild'
-            projectKey: 'gizmo-sh'
+            projectKey: 'jasonchester_gizmo.sh'
             projectName: 'Gizmo'
             projectVersion: '$(Build.BuildNumber)'
 
