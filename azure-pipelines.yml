@@ -20,11 +20,11 @@ steps:
     projectName: 'Gizmo'
     projectVersion: '$(Build.BuildNumber)'
 
-- task: SonarCloudAnalyze@1
-  displayName: 'Run SonarCloud code analysis'
-
 - script: dotnet build Gizmo.sln
   displayName: 'build for SonarCloud code analysis'
+
+- task: SonarCloudAnalyze@1
+  displayName: 'Run SonarCloud code analysis'
 
 - task: SonarCloudPublish@1
   displayName: 'Publish SonarCloud quality gate results'
