@@ -10,8 +10,24 @@ pool:
   vmImage: 'ubuntu-latest'
 
 steps:
+
+- task: SonarCloudPrepare@1
+  inputs:
+    SonarCloud: 'sonar-cloud-public'
+    organization: 'jasonchester'
+    scannerMode: 'MSBuild'
+    projectKey: 'gizmo-sh'
+    projectName: 'Gizmo'
+    projectVersion: '$(Build.BuildNumber)'
+
 - script: ./build-selfcontained.sh
   displayName: 'build selfcontained release'
+  
+- task: SonarCloudAnalyze@1
+  displayName: 'Run SonarCloud code analysis'
+
+- task: SonarCloudPublish@1
+  displayName: 'Publish SonarCloud quality gate results'
 
 # Archive Files
 # Compress files into .7z, .tar.gz, or .zip.
