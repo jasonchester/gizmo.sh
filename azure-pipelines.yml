@@ -6,63 +6,75 @@
 trigger:
 - master
 
-pool:
-  vmImage: 'ubuntu-latest'
 
-steps:
+stages:
+  - stage: build and analyze
 
-- task: SonarCloudPrepare@1
-  inputs:
-    SonarCloud: 'sonar-cloud-public'
-    organization: 'jasonchester'
-    scannerMode: 'MSBuild'
-    projectKey: 'gizmo-sh'
-    projectName: 'Gizmo'
-    projectVersion: '$(Build.BuildNumber)'
+    jobs:
+      - job: build         
+        pool:
+          vmImage: 'ubuntu-latest'
+        steps:
+        - script: dotnet restore Gizmo.sln
+          displayName: 'Restore dependencies'
 
-- script: dotnet build Gizmo.sln
-  displayName: 'build for SonarCloud code analysis'
+        - task: SonarCloudPrepare@1
+          inputs:
+            SonarCloud: 'sonar-cloud-public'
+            organization: 'jasonchester'
+            scannerMode: 'MSBuild'
+            projectKey: 'gizmo-sh'
+            projectName: 'Gizmo'
+            projectVersion: '$(Build.BuildNumber)'
 
-- task: SonarCloudAnalyze@1
-  displayName: 'Run SonarCloud code analysis'
+        - script: dotnet build Gizmo.sln
+          displayName: 'Build solution'
 
-- task: SonarCloudPublish@1
-  displayName: 'Publish SonarCloud quality gate results'
+        - task: SonarCloudAnalyze@1
+          displayName: 'Run SonarCloud code analysis'
 
-- script: ./build-selfcontained.sh
-  displayName: 'build selfcontained release'
-  
-# Archive Files
-# Compress files into .7z, .tar.gz, or .zip.
-- task: ArchiveFiles@2
-  inputs:
-    rootFolderOrFile: './out/gizmo.linux-x64'
-    includeRootFolder: false 
-    archiveType: 'zip' # Options: zip, 7z, tar, wim
-    archiveFile: '$(Build.ArtifactStagingDirectory)/gizmo.linux-x64_$(Build.BuildId).zip' 
+        - task: SonarCloudPublish@1
+          displayName: 'Publish SonarCloud quality gate results'
 
-- task: ArchiveFiles@2
-  inputs:
-    rootFolderOrFile: './out/gizmo.osx-x64'
-    includeRootFolder: false 
-    archiveType: 'zip' # Options: zip, 7z, tar, wim
-    archiveFile: '$(Build.ArtifactStagingDirectory)/gizmo.osx-x64_$(Build.BuildId).zip' 
+      - job: publish
+        pool:
+          vmImage: 'ubuntu-latest'
+        dependsOn: build
+        steps:
+          - script: ./build-selfcontained.sh
+            displayName: 'build selfcontained release'
+            
+          # Archive Files
+          # Compress files into .7z, .tar.gz, or .zip.
+          - task: ArchiveFiles@2
+            inputs:
+              rootFolderOrFile: './out/gizmo.linux-x64'
+              includeRootFolder: false 
+              archiveType: 'zip' # Options: zip, 7z, tar, wim
+              archiveFile: '$(Build.ArtifactStagingDirectory)/gizmo.linux-x64_$(Build.BuildId).zip' 
 
-- task: ArchiveFiles@2
-  inputs:
-    rootFolderOrFile: './out/gizmo.win-x64'
-    includeRootFolder: false 
-    archiveType: 'zip' # Options: zip, 7z, tar, wim
-    archiveFile: '$(Build.ArtifactStagingDirectory)/gizmo.win-x64_$(Build.BuildId).zip' 
+          - task: ArchiveFiles@2
+            inputs:
+              rootFolderOrFile: './out/gizmo.osx-x64'
+              includeRootFolder: false 
+              archiveType: 'zip' # Options: zip, 7z, tar, wim
+              archiveFile: '$(Build.ArtifactStagingDirectory)/gizmo.osx-x64_$(Build.BuildId).zip' 
 
-- task: GitHubRelease@0
-  inputs:
-    gitHubConnection: github-jasonchester
-    repositoryName: '$(Build.Repository.Name)'
-    action: 'create'
-    target: '$(Build.SourceVersion)'
-    tagSource: 'manual'
-    tag: 'gizmo_$(Build.BuildId)'
-    title: 'gizmo $(Build.BuildId)'
-    isDraft: true
-    isPreRelease: true
+          - task: ArchiveFiles@2
+            inputs:
+              rootFolderOrFile: './out/gizmo.win-x64'
+              includeRootFolder: false 
+              archiveType: 'zip' # Options: zip, 7z, tar, wim
+              archiveFile: '$(Build.ArtifactStagingDirectory)/gizmo.win-x64_$(Build.BuildId).zip' 
+
+          - task: GitHubRelease@0
+            inputs:
+              gitHubConnection: github-jasonchester
+              repositoryName: '$(Build.Repository.Name)'
+              action: 'create'
+              target: '$(Build.SourceVersion)'
+              tagSource: 'manual'
+              tag: 'gizmo_$(Build.BuildId)'
+              title: 'gizmo $(Build.BuildId)'
+              isDraft: true
+              isPreRelease: true
