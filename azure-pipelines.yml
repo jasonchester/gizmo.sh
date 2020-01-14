@@ -14,6 +14,8 @@ stages:
         pool:
           vmImage: 'ubuntu-latest'
         steps:
+        - bash: echo $SONAR_LOGIN
+
         - script: dotnet restore Gizmo.sln
           displayName: 'Restore dependencies'
 
