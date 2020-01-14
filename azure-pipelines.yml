@@ -20,15 +20,18 @@ steps:
     projectName: 'Gizmo'
     projectVersion: '$(Build.BuildNumber)'
 
-- script: ./build-selfcontained.sh
-  displayName: 'build selfcontained release'
-  
 - task: SonarCloudAnalyze@1
   displayName: 'Run SonarCloud code analysis'
+
+- script: dotnet build Gizmo.sln
+  displayName: 'build for SonarCloud code analysis'
 
 - task: SonarCloudPublish@1
   displayName: 'Publish SonarCloud quality gate results'
 
+- script: ./build-selfcontained.sh
+  displayName: 'build selfcontained release'
+  
 # Archive Files
 # Compress files into .7z, .tar.gz, or .zip.
 - task: ArchiveFiles@2
