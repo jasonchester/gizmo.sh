@@ -16,7 +16,7 @@
   <ItemGroup>
     <PackageReference Include="AsyncEnumerator" Version="3.1.0" />
     <PackageReference Include="Autofac" Version="4.9.4" />
-    <PackageReference Include="Gremlin.Net" Version="3.4.3" />
+    <PackageReference Include="Gremlin.Net" Version="3.4.8" />
     <PackageReference Include="Kurukuru" Version="1.1.0" />
     <PackageReference Include="Microsoft.Azure.Graphs" Version="0.3.1-preview" />
     <PackageReference Include="Microsoft.Extensions.Configuration" Version="2.2.0" />
